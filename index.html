@@ -282,26 +282,20 @@ body.split-active #md-pane { width: 40%; }
   max-width: 260px; line-height: 1.7;
 }
 
-/* ─── FILE DRAWER ────────────────────────────────────────── */
-#drawer-overlay {
-  position: fixed; inset: 0; z-index: 200;
-  background: rgba(0,0,0,0); pointer-events: none;
-  transition: background var(--drawer-anim);
-}
-body.drawer-open #drawer-overlay {
-  background: rgba(0,0,0,0.65); pointer-events: all;
+/* ─── MAIN AREA (drawer + content side-by-side) ──────────── */
+#main-area {
+  flex: 1; display: flex; flex-direction: row;
+  overflow: hidden; min-height: 0;
 }
 
+/* ─── FILE DRAWER ────────────────────────────────────────── */
 #drawer {
-  position: fixed; top: 0; left: 0; bottom: 0;
-  width: var(--sb-w); max-width: 88vw;
+  width: 0; flex-shrink: 0; overflow: hidden;
   background: var(--c-surface); border-right: 1px solid var(--c-border);
-  z-index: 210; display: flex; flex-direction: column;
-  transform: translateX(-102%);
-  transition: transform var(--drawer-anim);
-  box-shadow: 12px 0 48px rgba(0,0,0,0.5);
+  display: flex; flex-direction: column;
+  transition: width var(--drawer-anim);
 }
-body.drawer-open #drawer { transform: translateX(0); }
+body.drawer-open #drawer { width: var(--sb-w); }
 
 #drawer-header {
   height: var(--nav-h);
@@ -449,63 +443,65 @@ input[type=file] { display: none; }
   <!-- ── TABS ── -->
   <div id="tabbar"></div>
 
-  <!-- ── CONTENT ── -->
-  <div id="content">
+  <!-- ── MAIN AREA: DRAWER + CONTENT SIDE BY SIDE ── -->
+  <div id="main-area">
 
-    <!-- Editor pane (always primary) -->
-    <div id="editor-pane">
-      <div id="editor-area">
-        <div id="empty-state">
-          <div class="empty-mark">#</div>
-          <div class="empty-title">No document open</div>
-          <div class="empty-sub">Tap the menu to create or open a file</div>
+    <!-- File drawer (inline push sidebar) -->
+    <div id="drawer">
+      <div id="drawer-header">
+        <span class="drawer-title">Explorer</span>
+        <div class="drawer-actions">
+          <button class="icon-btn" title="New File" onclick="promptNewFile(null)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
+          </button>
+          <button class="icon-btn" title="New Folder" onclick="promptNewFolder(null)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
+          </button>
         </div>
       </div>
-    </div>
 
-    <!-- Drag-to-resize divider (desktop only) -->
-    <div id="split-divider"></div>
+      <div id="file-tree"></div>
 
-    <!-- Markdown pane -->
-    <div id="md-pane">
-      <div class="md-pane-header">
-        <span class="md-pane-label">Markdown Source</span>
-        <button class="btn sm ghost" onclick="copyMarkdown()">Copy</button>
+      <div id="drawer-footer">
+        <div class="drawer-footer-row">
+          <button class="btn block" onclick="importSingleFile()" style="flex:1;font-size:11px">⬆ Import .md</button>
+          <button class="btn block" onclick="exportCurrentFile()" style="flex:1;font-size:11px">⬇ Export .md</button>
+        </div>
+        <button class="btn block" onclick="exportWorkspace()" style="font-size:11px">⬇ Export Workspace .zip</button>
+        <button class="btn block" onclick="importWorkspace()" style="font-size:11px">⬆ Import Workspace .zip</button>
       </div>
-      <textarea id="md-textarea" spellcheck="false" placeholder="# markdown appears here…"></textarea>
+    </div>
+
+    <!-- Editor + markdown panes -->
+    <div id="content">
+
+      <!-- Editor pane (always primary) -->
+      <div id="editor-pane">
+        <div id="editor-area">
+          <div id="empty-state">
+            <div class="empty-mark">#</div>
+            <div class="empty-title">No document open</div>
+            <div class="empty-sub">Tap the menu to create or open a file</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Drag-to-resize divider (desktop only) -->
+      <div id="split-divider"></div>
+
+      <!-- Markdown pane -->
+      <div id="md-pane">
+        <div class="md-pane-header">
+          <span class="md-pane-label">Markdown Source</span>
+          <button class="btn sm ghost" onclick="copyMarkdown()">Copy</button>
+        </div>
+        <textarea id="md-textarea" spellcheck="false" placeholder="# markdown appears here…"></textarea>
+      </div>
+
     </div>
 
   </div>
 
-</div>
-
-<!-- Drawer overlay -->
-<div id="drawer-overlay" onclick="closeDrawer()"></div>
-
-<!-- File drawer -->
-<div id="drawer">
-  <div id="drawer-header">
-    <span class="drawer-title">Explorer</span>
-    <div class="drawer-actions">
-      <button class="icon-btn" title="New File" onclick="promptNewFile(null)">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
-      </button>
-      <button class="icon-btn" title="New Folder" onclick="promptNewFolder(null)">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
-      </button>
-    </div>
-  </div>
-
-  <div id="file-tree"></div>
-
-  <div id="drawer-footer">
-    <div class="drawer-footer-row">
-      <button class="btn block" onclick="importSingleFile()" style="flex:1;font-size:11px">⬆ Import .md</button>
-      <button class="btn block" onclick="exportCurrentFile()" style="flex:1;font-size:11px">⬇ Export .md</button>
-    </div>
-    <button class="btn block" onclick="exportWorkspace()" style="font-size:11px">⬇ Export Workspace .zip</button>
-    <button class="btn block" onclick="importWorkspace()" style="font-size:11px">⬆ Import Workspace .zip</button>
-  </div>
 </div>
 
 <!-- Hidden file inputs -->
@@ -827,7 +823,7 @@ function renderLevel(container, parentId, depth) {
         <button class="icon-btn" title="Rename" onclick="event.stopPropagation();promptRenameFile('${file.id}')">✏</button>
         <button class="icon-btn danger" title="Delete" onclick="event.stopPropagation();deleteFile('${file.id}')">✕</button>
       </div>`;
-    row.onclick = () => { openFile(file.id); closeDrawer(); };
+    row.onclick = () => { openFile(file.id); };
     applyDrag(row, 'file', file.id);
     applyRowDrop(row, 'file', file.id, parentId);
     container.appendChild(row);
@@ -938,7 +934,7 @@ function promptNewFile(folderId) {
     if (!name) return;
     const file = { id: uid(), name: mdExt(name), folderId: folderId || null, htmlContent: '', lastModified: Date.now() };
     S.files.push(file);
-    renderTree(); openFile(file.id); closeDrawer();
+    renderTree(); openFile(file.id);
   });
 }
 function promptNewFolder(parentId) {
@@ -1006,7 +1002,7 @@ function handleImportMd(e) {
   r.onload = ev => {
     const file = { id: uid(), name: f.name, folderId: null, htmlContent: mdToHtml(ev.target.result), lastModified: Date.now() };
     S.files.push(file);
-    renderTree(); openFile(file.id); closeDrawer();
+    renderTree(); openFile(file.id);
   };
   r.readAsText(f);
   e.target.value = '';
@@ -1211,6 +1207,7 @@ function init() {
   S.files.push(welcome);
   renderTree();
   openFile(welcome.id);
+  openDrawer();
 }
 
 init();
