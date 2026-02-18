@@ -57,7 +57,7 @@ Nothing is persisted to localStorage — workspace lives in memory and is export
 ## File structure
 
 ```
-markforge/
+editorapp/
 ├── index.html      ← entire application
 ├── CLAUDE.md       ← this file
 └── README.md       ← GitHub / deployment docs
