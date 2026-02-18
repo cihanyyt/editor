@@ -1208,7 +1208,7 @@ function init() {
   S.files.push(welcome);
   renderTree();
   openFile(welcome.id);
-  openDrawer();
+  if (window.innerWidth > 767) openDrawer();
 }
 
 init();
