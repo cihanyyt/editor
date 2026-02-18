@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>editorapp</title>
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600&family=Merriweather:wght@400;700&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link href="https://cdnjs.cloudflare.com/ajax/libs/quill/1.3.7/quill.snow.min.css" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/quill/1.3.7/quill.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
@@ -31,6 +31,7 @@
   --c-code:       #5de8b0;
   --f-ui:         'Syne', sans-serif;
   --f-mono:       'JetBrains Mono', monospace;
+  --f-editor:     'Inter', sans-serif;
   --nav-h:        52px;
   --tab-h:        36px;
   --sb-w:         280px;
@@ -98,6 +99,17 @@ html, body {
 }
 
 .nav-divider { width: 1px; height: 24px; background: var(--c-border); flex-shrink: 0; margin: 0 2px; }
+
+#font-picker {
+  background: var(--c-raised); border: 1px solid var(--c-border);
+  color: var(--c-text2); font-family: var(--f-ui); font-size: 11px; font-weight: 600;
+  padding: 5px 8px; border-radius: 8px; cursor: pointer; outline: none;
+  transition: border-color 0.15s, color 0.15s; flex-shrink: 0;
+  -webkit-appearance: none; appearance: none;
+}
+#font-picker:hover  { border-color: var(--c-border-hi); color: var(--c-text); }
+#font-picker:focus  { border-color: var(--c-accent); color: var(--c-text); }
+#font-picker option { background: var(--c-raised); }
 
 /* ─── TAB BAR ────────────────────────────────────────────── */
 #tabbar {
@@ -214,7 +226,7 @@ body.split-active #md-pane { width: 40%; }
 .ql-editor {
   flex: 1; overflow-y: auto;
   background: var(--c-base); color: var(--c-text);
-  font-family: 'Syne', sans-serif; font-size: 16px; line-height: 1.8;
+  font-family: var(--f-editor); font-size: 16px; line-height: 1.8;
   padding: 28px 20px; caret-color: var(--c-accent);
   width: 100%; box-sizing: border-box;
 }
@@ -425,6 +437,12 @@ input[type=file] { display: none; }
       <span class="path" id="nav-path"></span>
       <span class="name" id="nav-name">editorapp</span>
     </div>
+
+    <select id="font-picker" onchange="setFont(this.value)" title="Editor font">
+      <option value="'Inter', sans-serif">Inter</option>
+      <option value="'Merriweather', serif">Merriweather</option>
+      <option value="'JetBrains Mono', monospace">JetBrains Mono</option>
+    </select>
 
     <button class="nav-btn" id="btn-split" onclick="toggleSplit()" title="Toggle Markdown split (⌘M)">
       <!-- Two columns icon -->
@@ -640,6 +658,10 @@ function copyMarkdown() {
 // ═══════════════════════════════════════════════════════════
 // SPLIT & DRAWER TOGGLES
 // ═══════════════════════════════════════════════════════════
+function setFont(value) {
+  document.documentElement.style.setProperty('--f-editor', value);
+}
+
 function toggleSplit() {
   S.splitOpen = !S.splitOpen;
   document.body.classList.toggle('split-active', S.splitOpen);
