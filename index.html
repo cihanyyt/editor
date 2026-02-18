@@ -1,0 +1,1219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>MarkForge</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/quill/1.3.7/quill.snow.min.css" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/quill/1.3.7/quill.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/turndown/7.1.2/turndown.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+<style>
+/* ─── RESET & TOKENS ─────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --c-base:       #080b0f;
+  --c-surface:    #0e1318;
+  --c-raised:     #151c24;
+  --c-border:     #1e2a35;
+  --c-border-hi:  #2a3a4a;
+  --c-accent:     #00d8c8;
+  --c-accent-dim: rgba(0,216,200,0.12);
+  --c-accent2:    #f0833a;
+  --c-text:       #dce8f0;
+  --c-text2:      #7a93a6;
+  --c-text3:      #3a5060;
+  --c-danger:     #f05060;
+  --c-code:       #5de8b0;
+  --f-ui:         'Syne', sans-serif;
+  --f-mono:       'JetBrains Mono', monospace;
+  --nav-h:        52px;
+  --tab-h:        36px;
+  --sb-w:         280px;
+  --drawer-anim:  0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  --split-anim:   0.32s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+html, body {
+  height: 100%; overflow: hidden;
+  font-family: var(--f-ui);
+  background: var(--c-base);
+  color: var(--c-text);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ─── LAYOUT SHELL ───────────────────────────────────────── */
+#app {
+  display: flex; flex-direction: column;
+  height: 100dvh; overflow: hidden;
+  position: relative;
+}
+
+/* ─── NAV BAR ────────────────────────────────────────────── */
+#navbar {
+  height: var(--nav-h);
+  display: flex; align-items: center; gap: 0;
+  background: var(--c-surface);
+  border-bottom: 1px solid var(--c-border);
+  flex-shrink: 0; position: relative; z-index: 100;
+  padding: 0 4px;
+}
+
+.nav-btn {
+  display: flex; align-items: center; justify-content: center;
+  width: 44px; height: 44px; border-radius: 10px;
+  border: none; background: transparent;
+  color: var(--c-text2); cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  flex-shrink: 0; position: relative;
+  -webkit-tap-highlight-color: transparent;
+}
+.nav-btn:hover  { background: var(--c-raised); color: var(--c-text); }
+.nav-btn.active { color: var(--c-accent); }
+.nav-btn.active::after {
+  content: ''; position: absolute; bottom: 6px; left: 50%; transform: translateX(-50%);
+  width: 16px; height: 2px; background: var(--c-accent); border-radius: 2px;
+}
+.nav-btn svg {
+  width: 18px; height: 18px; stroke: currentColor; fill: none;
+  stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round;
+}
+
+#nav-filename {
+  flex: 1; min-width: 0;
+  font-family: var(--f-mono); font-size: 13px; font-weight: 500;
+  color: var(--c-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  padding: 0 6px;
+}
+#nav-filename .path {
+  font-size: 10px; color: var(--c-text3); display: block; margin-bottom: 1px; font-weight: 400;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+#nav-filename .name {
+  display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+.nav-divider { width: 1px; height: 24px; background: var(--c-border); flex-shrink: 0; margin: 0 2px; }
+
+/* ─── TAB BAR ────────────────────────────────────────────── */
+#tabbar {
+  height: var(--tab-h); display: flex; align-items: stretch;
+  background: var(--c-base); border-bottom: 1px solid var(--c-border);
+  overflow-x: auto; overflow-y: hidden; flex-shrink: 0;
+  scrollbar-width: none;
+}
+#tabbar::-webkit-scrollbar { display: none; }
+#tabbar:empty { display: none; }
+
+.tab {
+  display: flex; align-items: center; gap: 6px;
+  padding: 0 12px; min-width: 0; max-width: 160px;
+  font-size: 11px; font-family: var(--f-mono);
+  color: var(--c-text3); cursor: pointer; flex-shrink: 0;
+  border-right: 1px solid var(--c-border);
+  white-space: nowrap; transition: color 0.12s, background 0.12s;
+  position: relative;
+}
+.tab .tab-name { overflow: hidden; text-overflow: ellipsis; flex: 1; }
+.tab:hover { color: var(--c-text2); background: var(--c-raised); }
+.tab.active { color: var(--c-text); background: var(--c-surface); }
+.tab.active::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0;
+  height: 2px; background: var(--c-accent2);
+}
+.tab-close {
+  font-size: 16px; line-height: 1; color: var(--c-text3);
+  flex-shrink: 0; border-radius: 4px; padding: 0 2px;
+  transition: color 0.1s, background 0.1s;
+}
+.tab:hover .tab-close { color: var(--c-text2); }
+.tab-close:hover { color: var(--c-danger) !important; background: rgba(240,80,96,0.12); }
+
+/* ─── MAIN CONTENT AREA ──────────────────────────────────── */
+#content {
+  flex: 1; display: flex; overflow: hidden; position: relative; min-height: 0;
+}
+
+/* ─── EDITOR PANE ────────────────────────────────────────── */
+#editor-pane {
+  flex: 1; display: flex; flex-direction: column;
+  overflow: hidden; min-width: 0;
+  transition: flex var(--split-anim), width var(--split-anim);
+}
+
+/* ─── SPLIT DIVIDER ──────────────────────────────────────── */
+#split-divider {
+  width: 0; background: var(--c-border); flex-shrink: 0;
+  overflow: visible; transition: width var(--split-anim);
+  position: relative; cursor: col-resize;
+}
+body.split-active #split-divider { width: 1px; }
+
+/* ─── MARKDOWN PANE ──────────────────────────────────────── */
+#md-pane {
+  width: 0; flex-shrink: 0; overflow: hidden;
+  display: flex; flex-direction: column;
+  background: var(--c-base);
+  transition: width var(--split-anim);
+}
+body.split-active #md-pane { width: 40%; }
+
+.md-pane-header {
+  height: 36px; display: flex; align-items: center; justify-content: space-between;
+  padding: 0 14px; border-bottom: 1px solid var(--c-border);
+  background: var(--c-surface); flex-shrink: 0;
+}
+.md-pane-label {
+  font-family: var(--f-mono); font-size: 10px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.1em; color: var(--c-text3);
+}
+#md-textarea {
+  flex: 1; width: 100%; background: transparent;
+  color: var(--c-code); font-family: var(--f-mono);
+  font-size: 12.5px; line-height: 1.8;
+  padding: 20px 16px; border: none; outline: none;
+  resize: none; overflow-y: auto; tab-size: 2;
+}
+#md-textarea::-webkit-scrollbar { width: 4px; }
+#md-textarea::-webkit-scrollbar-thumb { background: var(--c-border-hi); border-radius: 2px; }
+
+/* ─── MOBILE: full-screen swap ───────────────────────────── */
+@media (max-width: 767px) {
+  body.split-active #md-pane    { width: 100%; }
+  body.split-active #editor-pane { width: 0; flex: 0 0 0; overflow: hidden; }
+  body.split-active #split-divider { display: none; }
+}
+
+/* ─── EDITOR AREA ────────────────────────────────────────── */
+/* Critical: must propagate flex height so .ql-editor can scroll */
+#editor-area {
+  flex: 1; display: flex; flex-direction: column;
+  overflow: hidden; min-height: 0;
+}
+
+/* ─── QUILL ──────────────────────────────────────────────── */
+#quill-wrap { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
+#quill-mount { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+.ql-toolbar.ql-snow {
+  background: var(--c-surface); border: none;
+  border-bottom: 1px solid var(--c-border);
+  padding: 6px 10px; flex-shrink: 0;
+  /* Must be visible — overflow:hidden/auto clips the picker dropdown */
+  overflow: visible;
+  flex-wrap: wrap;
+}
+.ql-container.ql-snow { border: none; flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+/* Picker dropdown must float above editor content */
+.ql-snow .ql-picker-options { z-index: 500 !important; }
+
+.ql-editor {
+  flex: 1; overflow-y: auto;
+  background: var(--c-base); color: var(--c-text);
+  font-family: 'Syne', sans-serif; font-size: 16px; line-height: 1.8;
+  padding: 28px 20px; caret-color: var(--c-accent);
+}
+@media (min-width: 768px) {
+  .ql-editor { padding: 40px max(40px, calc(50% - 380px)); }
+}
+.ql-editor::-webkit-scrollbar { width: 4px; }
+.ql-editor::-webkit-scrollbar-thumb { background: var(--c-border-hi); border-radius: 3px; }
+.ql-editor.ql-blank::before {
+  color: var(--c-text3); font-style: normal;
+  font-family: var(--f-mono); font-size: 13px;
+}
+.ql-editor h1 {
+  font-size: 2em; font-weight: 800; color: var(--c-text);
+  margin-bottom: 0.6em; line-height: 1.2;
+  border-bottom: 1px solid var(--c-border); padding-bottom: 0.4em;
+}
+.ql-editor h2 { font-size: 1.45em; font-weight: 700; color: var(--c-text); margin: 1.4em 0 0.4em; }
+.ql-editor h3 { font-size: 1.15em; font-weight: 600; color: var(--c-text2); margin: 1.2em 0 0.3em; }
+.ql-editor p  { margin-bottom: 0.9em; }
+.ql-editor a  { color: var(--c-accent); text-decoration: underline; text-underline-offset: 2px; }
+.ql-editor strong { color: var(--c-text); }
+.ql-editor em     { color: var(--c-text2); }
+.ql-editor code {
+  font-family: var(--f-mono); font-size: 0.85em;
+  background: var(--c-raised); color: var(--c-code);
+  padding: 2px 6px; border-radius: 4px; border: 1px solid var(--c-border);
+}
+.ql-editor pre.ql-syntax {
+  font-family: var(--f-mono); font-size: 13px; line-height: 1.6;
+  background: var(--c-raised); border: 1px solid var(--c-border);
+  border-radius: 8px; padding: 16px; color: var(--c-code); overflow-x: auto;
+}
+.ql-editor blockquote {
+  border-left: 3px solid var(--c-accent); padding-left: 16px;
+  color: var(--c-text2); font-style: italic; margin: 1em 0;
+}
+.ql-editor ul, .ql-editor ol { padding-left: 1.5em; margin-bottom: 0.9em; }
+.ql-editor li { margin-bottom: 0.3em; }
+
+/* Dark Quill toolbar */
+.ql-snow .ql-stroke { stroke: var(--c-text2) !important; }
+.ql-snow .ql-fill   { fill:   var(--c-text2) !important; }
+.ql-snow .ql-picker  { color: var(--c-text2) !important; }
+.ql-snow .ql-picker-options {
+  background: var(--c-raised) !important; border-color: var(--c-border) !important;
+}
+.ql-snow .ql-picker-item { color: var(--c-text2) !important; }
+.ql-snow button:hover .ql-stroke, .ql-snow .ql-active .ql-stroke { stroke: var(--c-accent) !important; }
+.ql-snow button:hover .ql-fill,   .ql-snow .ql-active .ql-fill   { fill:   var(--c-accent) !important; }
+.ql-snow .ql-picker-label:hover,  .ql-snow .ql-active .ql-picker-label { color: var(--c-accent) !important; }
+
+/* ─── EMPTY STATE ────────────────────────────────────────── */
+#empty-state {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 12px; color: var(--c-text3); text-align: center; padding: 40px;
+}
+.empty-mark {
+  font-family: var(--f-mono); font-size: 48px; font-weight: 700;
+  color: var(--c-accent); opacity: 0.2; line-height: 1;
+}
+.empty-title { font-size: 15px; font-weight: 600; color: var(--c-text3); }
+.empty-sub {
+  font-family: var(--f-mono); font-size: 11px; color: var(--c-text3);
+  max-width: 260px; line-height: 1.7;
+}
+
+/* ─── FILE DRAWER ────────────────────────────────────────── */
+#drawer-overlay {
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(0,0,0,0); pointer-events: none;
+  transition: background var(--drawer-anim);
+}
+body.drawer-open #drawer-overlay {
+  background: rgba(0,0,0,0.65); pointer-events: all;
+}
+
+#drawer {
+  position: fixed; top: 0; left: 0; bottom: 0;
+  width: var(--sb-w); max-width: 88vw;
+  background: var(--c-surface); border-right: 1px solid var(--c-border);
+  z-index: 210; display: flex; flex-direction: column;
+  transform: translateX(-102%);
+  transition: transform var(--drawer-anim);
+  box-shadow: 12px 0 48px rgba(0,0,0,0.5);
+}
+body.drawer-open #drawer { transform: translateX(0); }
+
+#drawer-header {
+  height: var(--nav-h);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 12px 0 16px; border-bottom: 1px solid var(--c-border); flex-shrink: 0;
+}
+.drawer-title {
+  font-family: var(--f-mono); font-size: 10px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.12em; color: var(--c-text3);
+}
+.drawer-actions { display: flex; gap: 3px; }
+
+#file-tree { flex: 1; overflow-y: auto; padding: 6px 0; }
+#file-tree::-webkit-scrollbar { width: 3px; }
+#file-tree::-webkit-scrollbar-thumb { background: var(--c-border); border-radius: 2px; }
+
+#drawer-footer {
+  border-top: 1px solid var(--c-border); padding: 10px 12px;
+  display: flex; flex-direction: column; gap: 6px; flex-shrink: 0;
+}
+.drawer-footer-row { display: flex; gap: 6px; }
+
+/* ─── TREE ITEMS ─────────────────────────────────────────── */
+.tree-row {
+  display: flex; align-items: center; gap: 5px;
+  min-height: 34px; padding: 0 8px;
+  cursor: pointer; user-select: none;
+  font-size: 12px; font-family: var(--f-mono);
+  color: var(--c-text2); transition: background 0.1s, color 0.1s;
+  position: relative;
+}
+.tree-row:hover  { background: var(--c-raised); color: var(--c-text); }
+.tree-row.active { background: var(--c-accent-dim); color: var(--c-accent); }
+.tree-row.active::before {
+  content: ''; position: absolute; left: 0; top: 4px; bottom: 4px;
+  width: 2px; background: var(--c-accent); border-radius: 0 2px 2px 0;
+}
+.row-chevron {
+  font-size: 9px; width: 12px; flex-shrink: 0; text-align: center;
+  transition: transform 0.15s; color: var(--c-text3);
+}
+.row-chevron.open { transform: rotate(90deg); }
+.row-icon  { font-size: 13px; flex-shrink: 0; width: 16px; text-align: center; }
+.row-name  { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row-actions { display: none; gap: 1px; }
+.tree-row:hover .row-actions { display: flex; }
+.tree-children.collapsed { display: none; }
+
+/* Drag & drop */
+.tree-row[draggable=true] { cursor: grab; }
+.tree-row.dragging { opacity: 0.3; pointer-events: none; }
+.tree-row.drop-into {
+  background: var(--c-accent-dim) !important;
+  outline: 1px dashed var(--c-accent); outline-offset: -2px;
+}
+.tree-row.drop-above { box-shadow: 0 -2px 0 0 var(--c-accent) inset; }
+.tree-row.drop-below { box-shadow: 0  2px 0 0 var(--c-accent) inset; }
+
+/* ─── BUTTONS ────────────────────────────────────────────── */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+  padding: 8px 14px; border-radius: 8px;
+  border: 1px solid var(--c-border); background: var(--c-raised);
+  color: var(--c-text); font-family: var(--f-ui); font-size: 12px;
+  font-weight: 600; cursor: pointer; white-space: nowrap;
+  transition: all 0.15s; -webkit-tap-highlight-color: transparent;
+}
+.btn:hover  { border-color: var(--c-border-hi); background: var(--c-border); }
+.btn:active { transform: scale(0.97); }
+.btn.primary { background: var(--c-accent); border-color: var(--c-accent); color: #000; }
+.btn.primary:hover { background: #2de8d8; border-color: #2de8d8; }
+.btn.block { width: 100%; }
+.btn.sm { padding: 5px 10px; font-size: 11px; border-radius: 6px; }
+.btn.ghost { background: transparent; border-color: transparent; color: var(--c-text2); }
+.btn.ghost:hover { background: var(--c-raised); color: var(--c-text); border-color: var(--c-border); }
+
+.icon-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 26px; height: 26px; border-radius: 6px;
+  border: none; background: transparent; color: var(--c-text3);
+  cursor: pointer; font-size: 12px; transition: all 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.icon-btn:hover { background: var(--c-border); color: var(--c-text); }
+.icon-btn.danger:hover { color: var(--c-danger); background: rgba(240,80,96,0.1); }
+
+/* ─── MODAL ──────────────────────────────────────────────── */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 999;
+  background: rgba(0,0,0,0.75); backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+}
+.modal {
+  background: var(--c-surface); border: 1px solid var(--c-border-hi);
+  border-radius: 14px; padding: 22px; width: 100%; max-width: 340px;
+  box-shadow: 0 24px 64px rgba(0,0,0,0.6);
+}
+.modal-title  { font-size: 14px; font-weight: 700; margin-bottom: 16px; font-family: var(--f-mono); }
+.modal-label  { font-size: 10px; color: var(--c-text3); margin-bottom: 7px; font-family: var(--f-mono); text-transform: uppercase; letter-spacing: 0.08em; }
+.modal input {
+  width: 100%; padding: 10px 14px;
+  background: var(--c-base); border: 1px solid var(--c-border);
+  border-radius: 8px; color: var(--c-text);
+  font-family: var(--f-mono); font-size: 13px; outline: none; margin-bottom: 16px;
+  transition: border-color 0.15s;
+}
+.modal input:focus { border-color: var(--c-accent); }
+.modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
+
+/* ─── SCROLLBAR GLOBAL ───────────────────────────────────── */
+* { scrollbar-width: thin; scrollbar-color: var(--c-border) transparent; }
+input[type=file] { display: none; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ── NAV ── -->
+  <nav id="navbar">
+    <button class="nav-btn" id="btn-drawer" onclick="toggleDrawer()" title="Files (F)">
+      <svg viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+
+    <div id="nav-filename">
+      <span class="path" id="nav-path"></span>
+      <span class="name" id="nav-name">MarkForge</span>
+    </div>
+
+    <button class="nav-btn" id="btn-split" onclick="toggleSplit()" title="Toggle Markdown split (⌘M)">
+      <!-- Two columns icon -->
+      <svg viewBox="0 0 24 24">
+        <rect x="2"  y="3" width="9" height="18" rx="1.5"/>
+        <rect x="13" y="3" width="9" height="18" rx="1.5"/>
+      </svg>
+    </button>
+
+    <div class="nav-divider"></div>
+
+    <button class="nav-btn" id="btn-save" onclick="saveFile()" title="Save (⌘S)">
+      <svg viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+    </button>
+  </nav>
+
+  <!-- ── TABS ── -->
+  <div id="tabbar"></div>
+
+  <!-- ── CONTENT ── -->
+  <div id="content">
+
+    <!-- Editor pane (always primary) -->
+    <div id="editor-pane">
+      <div id="editor-area">
+        <div id="empty-state">
+          <div class="empty-mark">#</div>
+          <div class="empty-title">No document open</div>
+          <div class="empty-sub">Tap the menu to create or open a file</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Drag-to-resize divider (desktop only) -->
+    <div id="split-divider"></div>
+
+    <!-- Markdown pane -->
+    <div id="md-pane">
+      <div class="md-pane-header">
+        <span class="md-pane-label">Markdown Source</span>
+        <button class="btn sm ghost" onclick="copyMarkdown()">Copy</button>
+      </div>
+      <textarea id="md-textarea" spellcheck="false" placeholder="# markdown appears here…"></textarea>
+    </div>
+
+  </div>
+
+</div>
+
+<!-- Drawer overlay -->
+<div id="drawer-overlay" onclick="closeDrawer()"></div>
+
+<!-- File drawer -->
+<div id="drawer">
+  <div id="drawer-header">
+    <span class="drawer-title">Explorer</span>
+    <div class="drawer-actions">
+      <button class="icon-btn" title="New File" onclick="promptNewFile(null)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
+      </button>
+      <button class="icon-btn" title="New Folder" onclick="promptNewFolder(null)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <div id="file-tree"></div>
+
+  <div id="drawer-footer">
+    <div class="drawer-footer-row">
+      <button class="btn block" onclick="importSingleFile()" style="flex:1;font-size:11px">⬆ Import .md</button>
+      <button class="btn block" onclick="exportCurrentFile()" style="flex:1;font-size:11px">⬇ Export .md</button>
+    </div>
+    <button class="btn block" onclick="exportWorkspace()" style="font-size:11px">⬇ Export Workspace .zip</button>
+    <button class="btn block" onclick="importWorkspace()" style="font-size:11px">⬆ Import Workspace .zip</button>
+  </div>
+</div>
+
+<!-- Hidden file inputs -->
+<input type="file" id="md-file-input"        accept=".md"  onchange="handleImportMd(event)">
+<input type="file" id="workspace-file-input" accept=".zip" onchange="handleImportWorkspace(event)">
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════
+const S = {
+  folders:    [],
+  files:      [],
+  openTabs:   [],
+  activeTab:  null,
+  splitOpen:  false,
+  drawerOpen: false,
+};
+
+let quill = null;
+let mdSyncTimer = null;
+let isSyncingBack = false;   // prevent quill↔md infinite loop
+const TD = new TurndownService({ headingStyle: 'atx', codeBlockStyle: 'fenced' });
+
+// ═══════════════════════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════════════════════
+const uid       = () => Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+const getFile   = id => S.files.find(f => f.id === id);
+const getFolder = id => S.folders.find(f => f.id === id);
+const esc       = s  => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const mdExt     = n  => n.endsWith('.md') ? n : n + '.md';
+
+function folderPath(folderId) {
+  if (!folderId) return '';
+  const parts = [];
+  let id = folderId;
+  while (id) {
+    const f = getFolder(id);
+    if (!f) break;
+    parts.unshift(f.name);
+    id = f.parentId;
+  }
+  return parts.join(' / ');
+}
+
+function htmlToMd(html) {
+  if (!html || html === '<p><br></p>') return '';
+  return TD.turndown(html);
+}
+function mdToHtml(md) {
+  return md ? marked.parse(md) : '';
+}
+
+// ═══════════════════════════════════════════════════════════
+// QUILL
+// ═══════════════════════════════════════════════════════════
+function initQuill(html) {
+  const area = document.getElementById('editor-area');
+  area.innerHTML = '<div id="quill-wrap"><div id="quill-mount"></div></div>';
+
+  quill = new Quill('#quill-mount', {
+    theme: 'snow',
+    placeholder: 'Start writing…',
+    modules: {
+      toolbar: [
+        [{ header: [1, 2, 3, false] }],
+        ['bold', 'italic', 'underline', 'strike'],
+        ['blockquote', 'code-block'],
+        [{ list: 'ordered' }, { list: 'bullet' }],
+        ['link'], ['clean'],
+      ],
+    },
+  });
+
+  if (html) quill.root.innerHTML = html;
+
+  quill.on('text-change', (_delta, _old, source) => {
+    if (source !== 'user') return;   // ignore programmatic changes (md→quill sync)
+    const file = getFile(S.activeTab);
+    if (file) {
+      file.htmlContent  = quill.root.innerHTML;
+      file.lastModified = Date.now();
+      scheduleMdSync();
+    }
+  });
+
+  if (S.splitOpen) syncMdPane();
+}
+
+// ═══════════════════════════════════════════════════════════
+// MD PANE
+// ═══════════════════════════════════════════════════════════
+function syncMdPane() {
+  const ta = document.getElementById('md-textarea');
+  if (!ta) return;
+  // Read straight from Quill (never stale) rather than via file.htmlContent
+  const html = quill ? quill.root.innerHTML : (getFile(S.activeTab)?.htmlContent || '');
+  const md   = html && html !== '<p><br></p>' ? TD.turndown(html) : '';
+  if (ta.value !== md) ta.value = md;   // only write if changed (avoids cursor jump)
+}
+
+function scheduleMdSync() {
+  if (!S.splitOpen) return;
+  clearTimeout(mdSyncTimer);
+  mdSyncTimer = setTimeout(syncMdPane, 150);   // short debounce — feels live
+}
+
+// Allow editing markdown in the split pane and syncing back to Quill
+document.getElementById('md-textarea').addEventListener('input', () => {
+  const file = getFile(S.activeTab);
+  if (!file || !quill) return;
+  // Use a separate timer — never cancel the quill→md sync timer (mdSyncTimer)
+  clearTimeout(document._mdBackTimer);
+  document._mdBackTimer = setTimeout(() => {
+    const html = mdToHtml(document.getElementById('md-textarea').value);
+    file.htmlContent  = html;
+    file.lastModified = Date.now();
+    // Setting innerHTML directly is seen as source='api' by Quill,
+    // so our text-change guard (source !== 'user') will ignore it — no loop.
+    quill.root.innerHTML = html;
+  }, 600);
+});
+
+function copyMarkdown() {
+  const ta = document.getElementById('md-textarea');
+  if (!ta) return;
+  navigator.clipboard.writeText(ta.value).catch(() => {});
+  const btn = document.querySelector('.md-pane-header .btn');
+  const orig = btn.textContent;
+  btn.textContent = '✓ Copied';
+  setTimeout(() => btn.textContent = orig, 1400);
+}
+
+// ═══════════════════════════════════════════════════════════
+// SPLIT & DRAWER TOGGLES
+// ═══════════════════════════════════════════════════════════
+function toggleSplit() {
+  S.splitOpen = !S.splitOpen;
+  document.body.classList.toggle('split-active', S.splitOpen);
+  document.getElementById('btn-split').classList.toggle('active', S.splitOpen);
+  if (S.splitOpen) syncMdPane();
+}
+
+function toggleDrawer() { S.drawerOpen ? closeDrawer() : openDrawer(); }
+function openDrawer() {
+  S.drawerOpen = true;
+  document.body.classList.add('drawer-open');
+  document.getElementById('btn-drawer').classList.add('active');
+}
+function closeDrawer() {
+  S.drawerOpen = false;
+  document.body.classList.remove('drawer-open');
+  document.getElementById('btn-drawer').classList.remove('active');
+}
+
+// ═══════════════════════════════════════════════════════════
+// RENDER TREE
+// ═══════════════════════════════════════════════════════════
+function renderTree() {
+  const tree = document.getElementById('file-tree');
+  tree.innerHTML = '';
+  renderLevel(tree, null, 0);
+}
+
+// ── drag state ──────────────────────────────────────────────
+const drag = { type: null, id: null };   // type: 'file' | 'folder'
+
+function clearDropStyles() {
+  document.querySelectorAll('.drop-into,.drop-above,.drop-below,.dragging').forEach(el => {
+    el.classList.remove('drop-into','drop-above','drop-below','dragging');
+  });
+}
+
+function applyDrag(row, type, id) {
+  row.setAttribute('draggable', 'true');
+  row.addEventListener('dragstart', e => {
+    drag.type = type; drag.id = id;
+    row.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', id);
+  });
+  row.addEventListener('dragend', () => { clearDropStyles(); });
+}
+
+function applyFolderDrop(row, folderId) {
+  row.addEventListener('dragover', e => {
+    if (!drag.id || drag.id === folderId) return;
+    e.preventDefault(); e.stopPropagation();
+    // Prevent dropping a folder into its own descendant
+    if (drag.type === 'folder' && isFolderDescendant(folderId, drag.id)) return;
+    clearDropStyles();
+    row.classList.add('drop-into');
+    e.dataTransfer.dropEffect = 'move';
+  });
+  row.addEventListener('dragleave', e => {
+    if (!row.contains(e.relatedTarget)) row.classList.remove('drop-into');
+  });
+  row.addEventListener('drop', e => {
+    e.preventDefault(); e.stopPropagation();
+    if (!drag.id || drag.id === folderId) { clearDropStyles(); return; }
+    if (drag.type === 'folder' && isFolderDescendant(folderId, drag.id)) { clearDropStyles(); return; }
+    if (drag.type === 'file') {
+      const f = getFile(drag.id);
+      if (f) f.folderId = folderId;
+    } else {
+      const f = getFolder(drag.id);
+      if (f) f.parentId = folderId;
+    }
+    clearDropStyles();
+    renderTree();
+  });
+}
+
+function applyRowDrop(row, type, id, parentId) {
+  // Drop above/below for reordering within same parent
+  row.addEventListener('dragover', e => {
+    if (!drag.id || drag.id === id) return;
+    // If dragging over a folder row, prefer "into" — handled by applyFolderDrop
+    if (type === 'folder') return;
+    e.preventDefault(); e.stopPropagation();
+    clearDropStyles();
+    const rect = row.getBoundingClientRect();
+    const half = rect.top + rect.height / 2;
+    row.classList.add(e.clientY < half ? 'drop-above' : 'drop-below');
+    e.dataTransfer.dropEffect = 'move';
+  });
+  row.addEventListener('dragleave', e => {
+    if (!row.contains(e.relatedTarget)) row.classList.remove('drop-above','drop-below');
+  });
+  row.addEventListener('drop', e => {
+    e.preventDefault(); e.stopPropagation();
+    if (!drag.id || drag.id === id) { clearDropStyles(); return; }
+    const above = row.classList.contains('drop-above');
+    clearDropStyles();
+    moveItem(drag.type, drag.id, type, id, parentId, above);
+    renderTree();
+  });
+}
+
+function isFolderDescendant(targetId, ancestorId) {
+  let id = targetId;
+  while (id) {
+    if (id === ancestorId) return true;
+    const f = getFolder(id);
+    if (!f) break;
+    id = f.parentId;
+  }
+  return false;
+}
+
+function moveItem(srcType, srcId, refType, refId, refParentId, above) {
+  if (srcType === 'file') {
+    const f = getFile(srcId);
+    if (!f) return;
+    // Move into same parent as the ref item
+    f.folderId = refParentId;
+    // Reorder within S.files
+    const arr    = S.files;
+    const srcIdx = arr.findIndex(x => x.id === srcId);
+    const refIdx = arr.findIndex(x => x.id === refId);
+    if (srcIdx === -1 || refIdx === -1) return;
+    const [item] = arr.splice(srcIdx, 1);
+    const newRef  = arr.findIndex(x => x.id === refId);
+    arr.splice(above ? newRef : newRef + 1, 0, item);
+  } else {
+    const f = getFolder(srcId);
+    if (!f) return;
+    f.parentId = refParentId;
+    const arr    = S.folders;
+    const srcIdx = arr.findIndex(x => x.id === srcId);
+    const refIdx = arr.findIndex(x => x.id === refId);
+    if (srcIdx === -1 || refIdx === -1) return;
+    const [item] = arr.splice(srcIdx, 1);
+    const newRef  = arr.findIndex(x => x.id === refId);
+    arr.splice(above ? newRef : newRef + 1, 0, item);
+  }
+}
+
+function renderLevel(container, parentId, depth) {
+  const indent = 10 + depth * 14;
+
+  S.folders.filter(f => f.parentId === parentId).forEach(folder => {
+    const wrap = document.createElement('div');
+    const row  = document.createElement('div');
+    row.className = 'tree-row';
+    row.style.paddingLeft = indent + 'px';
+    row.innerHTML = `
+      <span class="row-chevron ${folder.collapsed ? '' : 'open'}">▶</span>
+      <span class="row-icon">📁</span>
+      <span class="row-name">${esc(folder.name)}</span>
+      <div class="row-actions">
+        <button class="icon-btn" title="New file"   onclick="event.stopPropagation();promptNewFile('${folder.id}')">+📄</button>
+        <button class="icon-btn" title="New folder" onclick="event.stopPropagation();promptNewFolder('${folder.id}')">+📁</button>
+        <button class="icon-btn" title="Rename"     onclick="event.stopPropagation();promptRenameFolder('${folder.id}')">✏</button>
+        <button class="icon-btn danger" title="Delete" onclick="event.stopPropagation();deleteFolder('${folder.id}')">✕</button>
+      </div>`;
+    row.onclick = () => { folder.collapsed = !folder.collapsed; renderTree(); };
+    applyDrag(row, 'folder', folder.id);
+    applyFolderDrop(row, folder.id);
+    applyRowDrop(row, 'folder', folder.id, parentId);
+
+    const kids = document.createElement('div');
+    kids.className = 'tree-children' + (folder.collapsed ? ' collapsed' : '');
+    wrap.appendChild(row);
+    wrap.appendChild(kids);
+    container.appendChild(wrap);
+    renderLevel(kids, folder.id, depth + 1);
+  });
+
+  S.files.filter(f => f.folderId === parentId).forEach(file => {
+    const row = document.createElement('div');
+    row.className = 'tree-row' + (S.activeTab === file.id ? ' active' : '');
+    row.style.paddingLeft = (indent + 16) + 'px';
+    row.innerHTML = `
+      <span class="row-icon">📄</span>
+      <span class="row-name">${esc(file.name)}</span>
+      <div class="row-actions">
+        <button class="icon-btn" title="Rename" onclick="event.stopPropagation();promptRenameFile('${file.id}')">✏</button>
+        <button class="icon-btn danger" title="Delete" onclick="event.stopPropagation();deleteFile('${file.id}')">✕</button>
+      </div>`;
+    row.onclick = () => { openFile(file.id); closeDrawer(); };
+    applyDrag(row, 'file', file.id);
+    applyRowDrop(row, 'file', file.id, parentId);
+    container.appendChild(row);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+// RENDER TABS
+// ═══════════════════════════════════════════════════════════
+function renderTabs() {
+  const bar = document.getElementById('tabbar');
+  bar.innerHTML = '';
+  S.openTabs.forEach(id => {
+    const f = getFile(id);
+    if (!f) return;
+    const tab = document.createElement('div');
+    tab.className = 'tab' + (S.activeTab === id ? ' active' : '');
+    tab.innerHTML = `<span class="tab-name">${esc(f.name)}</span><span class="tab-close" onclick="event.stopPropagation();closeTab('${id}')">×</span>`;
+    tab.onclick = () => switchTab(id);
+    bar.appendChild(tab);
+    // Scroll active tab into view
+    if (S.activeTab === id) setTimeout(() => tab.scrollIntoView({ inline: 'nearest' }), 0);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+// NAV FILENAME
+// ═══════════════════════════════════════════════════════════
+function updateNav() {
+  const f = getFile(S.activeTab);
+  document.getElementById('nav-path').textContent = f ? folderPath(f.folderId) : '';
+  document.getElementById('nav-name').textContent = f ? f.name : 'MarkForge';
+}
+
+// ═══════════════════════════════════════════════════════════
+// OPEN / SWITCH / CLOSE TABS
+// ═══════════════════════════════════════════════════════════
+function openFile(fileId) {
+  flushContent();
+  if (!S.openTabs.includes(fileId)) S.openTabs.push(fileId);
+  S.activeTab = fileId;
+  quill = null;
+  initQuill(getFile(fileId)?.htmlContent || '');
+  renderTabs(); renderTree(); updateNav();
+}
+
+function switchTab(fileId) {
+  if (fileId === S.activeTab) return;
+  flushContent();
+  S.activeTab = fileId;
+  quill = null;
+  initQuill(getFile(fileId)?.htmlContent || '');
+  renderTabs(); renderTree(); updateNav();
+}
+
+function closeTab(fileId) {
+  flushContent();
+  S.openTabs = S.openTabs.filter(id => id !== fileId);
+  if (S.activeTab === fileId) {
+    S.activeTab = S.openTabs[S.openTabs.length - 1] || null;
+  }
+  quill = null;
+  if (S.activeTab) {
+    initQuill(getFile(S.activeTab)?.htmlContent || '');
+  } else {
+    showEmptyState();
+  }
+  renderTabs(); renderTree(); updateNav();
+  if (S.splitOpen) syncMdPane();
+}
+
+function showEmptyState() {
+  document.getElementById('editor-area').innerHTML = `
+    <div id="empty-state">
+      <div class="empty-mark">#</div>
+      <div class="empty-title">No document open</div>
+      <div class="empty-sub">Tap the menu to create or open a file</div>
+    </div>`;
+}
+
+// ═══════════════════════════════════════════════════════════
+// FLUSH CONTENT
+// ═══════════════════════════════════════════════════════════
+function flushContent() {
+  const file = getFile(S.activeTab);
+  if (file && quill) {
+    file.htmlContent  = quill.root.innerHTML;
+    file.lastModified = Date.now();
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// SAVE
+// ═══════════════════════════════════════════════════════════
+function saveFile() {
+  flushContent();
+  const btn  = document.getElementById('btn-save');
+  const prev = btn.style.color;
+  btn.style.color = 'var(--c-accent)';
+  setTimeout(() => btn.style.color = prev || '', 1200);
+}
+
+// ═══════════════════════════════════════════════════════════
+// CRUD — FILES & FOLDERS
+// ═══════════════════════════════════════════════════════════
+function promptNewFile(folderId) {
+  showModal('New File', 'Filename:', '', name => {
+    if (!name) return;
+    const file = { id: uid(), name: mdExt(name), folderId: folderId || null, htmlContent: '', lastModified: Date.now() };
+    S.files.push(file);
+    renderTree(); openFile(file.id); closeDrawer();
+  });
+}
+function promptNewFolder(parentId) {
+  showModal('New Folder', 'Folder name:', '', name => {
+    if (!name) return;
+    S.folders.push({ id: uid(), name, parentId: parentId || null, collapsed: false });
+    renderTree();
+  });
+}
+function promptRenameFile(fileId) {
+  const f = getFile(fileId);
+  if (!f) return;
+  showModal('Rename', 'New name:', f.name, name => {
+    if (!name) return;
+    f.name = mdExt(name);
+    renderTree(); renderTabs(); updateNav();
+  });
+}
+function promptRenameFolder(folderId) {
+  const f = getFolder(folderId);
+  if (!f) return;
+  showModal('Rename Folder', 'New name:', f.name, name => {
+    if (!name) return;
+    f.name = name; renderTree();
+  });
+}
+function deleteFile(fileId) {
+  if (!confirm('Delete this file?')) return;
+  closeTab(fileId);
+  S.files = S.files.filter(f => f.id !== fileId);
+  renderTree();
+}
+function deleteFolder(folderId) {
+  if (!confirm('Delete this folder and all its contents?')) return;
+  deleteFolderRecursive(folderId);
+  renderTree();
+}
+function deleteFolderRecursive(folderId) {
+  S.files.filter(f => f.folderId === folderId).forEach(f => {
+    S.openTabs = S.openTabs.filter(id => id !== f.id);
+    if (S.activeTab === f.id) { S.activeTab = null; }
+  });
+  S.files   = S.files.filter(f => f.folderId !== folderId);
+  S.folders.filter(f => f.parentId === folderId).forEach(f => deleteFolderRecursive(f.id));
+  S.folders = S.folders.filter(f => f.id !== folderId);
+  if (!S.activeTab) { quill = null; showEmptyState(); renderTabs(); updateNav(); }
+}
+
+// ═══════════════════════════════════════════════════════════
+// IMPORT / EXPORT
+// ═══════════════════════════════════════════════════════════
+function exportCurrentFile() {
+  if (!S.activeTab) { alert('No file open.'); return; }
+  flushContent();
+  const file = getFile(S.activeTab);
+  dl(file.name, new Blob([htmlToMd(file.htmlContent || '')], { type: 'text/markdown' }));
+}
+
+function importSingleFile() { document.getElementById('md-file-input').click(); }
+
+function handleImportMd(e) {
+  const f = e.target.files[0];
+  if (!f) return;
+  const r = new FileReader();
+  r.onload = ev => {
+    const file = { id: uid(), name: f.name, folderId: null, htmlContent: mdToHtml(ev.target.result), lastModified: Date.now() };
+    S.files.push(file);
+    renderTree(); openFile(file.id); closeDrawer();
+  };
+  r.readAsText(f);
+  e.target.value = '';
+}
+
+function exportWorkspace() {
+  flushContent();
+  const zip = new JSZip();
+  S.files.forEach(file => {
+    const fp   = folderPath(file.folderId);
+    const path = fp ? fp.replace(/ \/ /g, '/') + '/' + file.name : file.name;
+    zip.file(path, htmlToMd(file.htmlContent || ''));
+  });
+  zip.generateAsync({ type: 'blob' }).then(blob => dl('markforge-workspace.zip', blob));
+}
+
+function importWorkspace() { document.getElementById('workspace-file-input').click(); }
+
+function handleImportWorkspace(e) {
+  const f = e.target.files[0];
+  if (!f) return;
+  JSZip.loadAsync(f).then(zip => {
+    S.folders = []; S.files = []; S.openTabs = []; S.activeTab = null; quill = null;
+    const folderMap = {}, promises = [];
+    zip.forEach((path, entry) => {
+      if (entry.dir || !path.endsWith('.md')) return;
+      const parts  = path.split('/');
+      const fname  = parts.pop();
+      let parentId = null;
+      parts.forEach((part, i) => {
+        const key = parts.slice(0, i + 1).join('/');
+        if (!folderMap[key]) {
+          const folder = { id: uid(), name: part, parentId, collapsed: false };
+          S.folders.push(folder);
+          folderMap[key] = folder.id;
+        }
+        parentId = folderMap[key];
+      });
+      promises.push(entry.async('string').then(md => {
+        S.files.push({ id: uid(), name: fname, folderId: parentId, htmlContent: mdToHtml(md), lastModified: Date.now() });
+      }));
+    });
+    Promise.all(promises).then(() => {
+      showEmptyState(); renderTree(); renderTabs(); updateNav();
+    });
+  }).catch(err => alert('Import failed: ' + err.message));
+  e.target.value = '';
+}
+
+function dl(filename, blob) {
+  const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: filename });
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(a.href), 8000);
+}
+
+// ═══════════════════════════════════════════════════════════
+// MODAL
+// ═══════════════════════════════════════════════════════════
+function showModal(title, label, defaultVal, cb) {
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal" onclick="event.stopPropagation()">
+      <div class="modal-title">${esc(title)}</div>
+      <div class="modal-label">${esc(label)}</div>
+      <input id="_mi" type="text" value="${esc(defaultVal)}" autocomplete="off">
+      <div class="modal-actions">
+        <button class="btn sm ghost" id="_mc">Cancel</button>
+        <button class="btn sm primary" id="_mo">Create</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  const input = overlay.querySelector('#_mi');
+  input.focus(); input.select();
+  const ok = () => { document.body.removeChild(overlay); cb(input.value.trim()); };
+  const no = () => document.body.removeChild(overlay);
+  overlay.querySelector('#_mo').onclick = ok;
+  overlay.querySelector('#_mc').onclick = no;
+  overlay.onclick = no;
+  input.onkeydown = e => { if (e.key === 'Enter') ok(); if (e.key === 'Escape') no(); };
+}
+
+// ═══════════════════════════════════════════════════════════
+// SPLIT DIVIDER DRAG (desktop)
+// ═══════════════════════════════════════════════════════════
+(function () {
+  const divider = document.getElementById('split-divider');
+  const mdPane  = document.getElementById('md-pane');
+  let drag = false, startX, startW;
+  divider.addEventListener('mousedown', e => {
+    if (!S.splitOpen) return;
+    drag = true; startX = e.clientX; startW = mdPane.offsetWidth;
+    document.body.style.cursor     = 'col-resize';
+    document.body.style.userSelect = 'none';
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove', e => {
+    if (!drag) return;
+    const totalW = document.getElementById('content').offsetWidth;
+    const delta  = startX - e.clientX;
+    const newW   = Math.max(200, Math.min(totalW * 0.65, startW + delta));
+    mdPane.style.width = newW + 'px';
+    // Disable CSS transition while dragging
+    mdPane.style.transition = 'none';
+  });
+  document.addEventListener('mouseup', () => {
+    if (!drag) return;
+    drag = false;
+    document.body.style.cursor     = '';
+    document.body.style.userSelect = '';
+    mdPane.style.transition = '';
+  });
+})();
+
+// ═══════════════════════════════════════════════════════════
+// KEYBOARD SHORTCUTS
+// ═══════════════════════════════════════════════════════════
+document.addEventListener('keydown', e => {
+  if (document.querySelector('.modal-overlay')) return;
+  const mod = e.ctrlKey || e.metaKey;
+  if (mod && e.key === 's') { e.preventDefault(); saveFile(); }
+  if (mod && e.key === 'e') { e.preventDefault(); exportCurrentFile(); }
+  if (mod && e.key === 'm') { e.preventDefault(); toggleSplit(); }
+  if (mod && e.key === 'w') { e.preventDefault(); if (S.activeTab) closeTab(S.activeTab); }
+  if (mod && e.key === 'f') { e.preventDefault(); toggleDrawer(); }
+  if (e.key === 'Escape' && S.drawerOpen) closeDrawer();
+});
+
+// ═══════════════════════════════════════════════════════════
+// DRAG & DROP FILES
+// ═══════════════════════════════════════════════════════════
+document.addEventListener('dragover', e => e.preventDefault());
+document.addEventListener('drop', e => {
+  e.preventDefault();
+  Array.from(e.dataTransfer.files).forEach(f => {
+    if (f.name.endsWith('.md')) {
+      const r = new FileReader();
+      r.onload = ev => {
+        const file = { id: uid(), name: f.name, folderId: null, htmlContent: mdToHtml(ev.target.result), lastModified: Date.now() };
+        S.files.push(file);
+        renderTree(); openFile(file.id);
+      };
+      r.readAsText(f);
+    }
+  });
+});
+
+// ═══════════════════════════════════════════════════════════
+// WELCOME & INIT
+// ═══════════════════════════════════════════════════════════
+const WELCOME_HTML = `
+<h1>Welcome to MarkForge</h1>
+<p>A minimal, mobile-first documentation editor. Write in rich text — the Markdown source updates live alongside. Everything lives in a single <code>index.html</code> file you can self-host for free on GitHub Pages.</p>
+
+<h2>Getting started</h2>
+<p>Tap the <strong>☰ menu</strong> (top left) to open the file explorer. From there you can create files and folders, rename them, reorder them by dragging, and import or export your work. Hit the <strong>split view button</strong> (top right) to reveal the raw Markdown pane alongside the editor. On mobile, this swaps between the two views full-screen.</p>
+
+<h2>The editor</h2>
+<p>MarkForge uses a rich text editor (Quill) as its primary surface. You write and format as you would in any word processor — headings, bold, italic, lists, blockquotes, code blocks, and links are all available from the toolbar. There is no need to think in Markdown syntax unless you want to.</p>
+<p>At the same time, every keystroke is converted to clean Markdown in the background and reflected live in the split pane. You can also edit the Markdown directly in that pane and the rich text view will update after a short pause.</p>
+
+<h2>Keyboard shortcuts</h2>
+<ul>
+<li><code>⌘/Ctrl + M</code> — toggle Markdown split view</li>
+<li><code>⌘/Ctrl + S</code> — save current file</li>
+<li><code>⌘/Ctrl + E</code> — export current file as <code>.md</code></li>
+<li><code>⌘/Ctrl + W</code> — close current tab</li>
+<li><code>⌘/Ctrl + F</code> — toggle file explorer</li>
+<li><code>Esc</code> — close file explorer</li>
+</ul>
+
+<h2>File organisation</h2>
+<p>Files live inside a folder tree in the explorer drawer. You can nest folders to any depth. To move a file or folder, grab its row and drag it — drop onto a folder to move inside it, or drop between rows to reorder. Changes are reflected immediately.</p>
+<p>Each document is stored in memory during your session. Nothing is sent to a server. Use <strong>Export Workspace</strong> to download your entire folder structure as a <code>.zip</code> of <code>.md</code> files, preserving all paths. Use <strong>Import Workspace</strong> to restore it later.</p>
+
+<h2>Hosting on GitHub Pages</h2>
+<p>Because MarkForge is a single self-contained <code>index.html</code> file with no backend and no build step, deployment is trivial:</p>
+<ol>
+<li>Create a new GitHub repository (or use an existing one).</li>
+<li>Add <code>index.html</code> to the root of the repository.</li>
+<li>Go to <strong>Settings → Pages</strong>, set the source to the <code>main</code> branch, root path.</li>
+<li>GitHub will publish it at <code>https://&lt;your-username&gt;.github.io/&lt;repo-name&gt;</code> within a minute.</li>
+</ol>
+<p>To use a custom domain, add a <code>CNAME</code> file containing your domain name to the repository root, then point your DNS to GitHub's servers. HTTPS is provisioned automatically.</p>
+
+<h2>Tips for good documentation</h2>
+<p>Good documentation is written for a specific reader with a specific goal. Before writing, ask: who is this for, and what do they need to be able to do after reading it? Structure your answer around tasks, not features. Use short sentences. Prefer active voice. Put the most important information first.</p>
+<p>Use headings to help readers scan — a reader should be able to understand the shape of a document from its headings alone without reading the body text. Use code blocks for anything a reader might copy. Use lists when you have more than two parallel items. Use bold sparingly, only for things that genuinely must not be missed.</p>
+<p>Version your docs alongside your code. Outdated documentation is worse than no documentation because it actively misleads. A short accurate doc is always better than a long stale one.</p>
+
+<h2>About</h2>
+<p>MarkForge is open source and MIT licensed. Contributions, issues, and forks are welcome. Built with <a href="https://quilljs.com">Quill</a>, <a href="https://github.com/mixmark-io/turndown">Turndown</a>, <a href="https://marked.js.org">Marked</a>, and <a href="https://stuk.github.io/jszip">JSZip</a> — all loaded from CDN, no <code>npm install</code> required.</p>
+`;
+
+function init() {
+  const welcome = {
+    id: uid(), name: 'welcome.md', folderId: null,
+    htmlContent: WELCOME_HTML, lastModified: Date.now(),
+  };
+  S.files.push(welcome);
+  renderTree();
+  openFile(welcome.id);
+}
+
+init();
+</script>
+</body>
+</html>
