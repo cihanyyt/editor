@@ -205,7 +205,7 @@ body.split-active #md-pane { width: 40%; }
   padding: 6px 10px; flex-shrink: 0;
   /* Must be visible — overflow:hidden/auto clips the picker dropdown */
   overflow: visible;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
 }
 .ql-container.ql-snow { border: none; flex: 1; display: flex; flex-direction: column; overflow: hidden; }
 /* Picker dropdown must float above editor content */
@@ -216,9 +216,10 @@ body.split-active #md-pane { width: 40%; }
   background: var(--c-base); color: var(--c-text);
   font-family: 'Syne', sans-serif; font-size: 16px; line-height: 1.8;
   padding: 28px 20px; caret-color: var(--c-accent);
+  width: 100%; box-sizing: border-box;
 }
 @media (min-width: 768px) {
-  .ql-editor { padding: 40px max(40px, calc(50% - 380px)); }
+  .ql-editor { padding: 40px 48px; max-width: 856px; margin: 0 auto; }
 }
 .ql-editor::-webkit-scrollbar { width: 4px; }
 .ql-editor::-webkit-scrollbar-thumb { background: var(--c-border-hi); border-radius: 3px; }
