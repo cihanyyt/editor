@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>MarkForge</title>
+<title>editorapp</title>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link href="https://cdnjs.cloudflare.com/ajax/libs/quill/1.3.7/quill.snow.min.css" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/quill/1.3.7/quill.min.js"></script>
@@ -428,7 +428,7 @@ input[type=file] { display: none; }
 
     <div id="nav-filename">
       <span class="path" id="nav-path"></span>
-      <span class="name" id="nav-name">MarkForge</span>
+      <span class="name" id="nav-name">editorapp</span>
     </div>
 
     <button class="nav-btn" id="btn-split" onclick="toggleSplit()" title="Toggle Markdown split (⌘M)">
@@ -859,7 +859,7 @@ function renderTabs() {
 function updateNav() {
   const f = getFile(S.activeTab);
   document.getElementById('nav-path').textContent = f ? folderPath(f.folderId) : '';
-  document.getElementById('nav-name').textContent = f ? f.name : 'MarkForge';
+  document.getElementById('nav-name').textContent = f ? f.name : 'editorapp';
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1020,7 +1020,7 @@ function exportWorkspace() {
     const path = fp ? fp.replace(/ \/ /g, '/') + '/' + file.name : file.name;
     zip.file(path, htmlToMd(file.htmlContent || ''));
   });
-  zip.generateAsync({ type: 'blob' }).then(blob => dl('markforge-workspace.zip', blob));
+  zip.generateAsync({ type: 'blob' }).then(blob => dl('editorapp-workspace.zip', blob));
 }
 
 function importWorkspace() { document.getElementById('workspace-file-input').click(); }
@@ -1160,14 +1160,14 @@ document.addEventListener('drop', e => {
 // WELCOME & INIT
 // ═══════════════════════════════════════════════════════════
 const WELCOME_HTML = `
-<h1>Welcome to MarkForge</h1>
+<h1>Welcome to editorapp</h1>
 <p>A minimal, mobile-first documentation editor. Write in rich text — the Markdown source updates live alongside. Everything lives in a single <code>index.html</code> file you can self-host for free on GitHub Pages.</p>
 
 <h2>Getting started</h2>
 <p>Tap the <strong>☰ menu</strong> (top left) to open the file explorer. From there you can create files and folders, rename them, reorder them by dragging, and import or export your work. Hit the <strong>split view button</strong> (top right) to reveal the raw Markdown pane alongside the editor. On mobile, this swaps between the two views full-screen.</p>
 
 <h2>The editor</h2>
-<p>MarkForge uses a rich text editor (Quill) as its primary surface. You write and format as you would in any word processor — headings, bold, italic, lists, blockquotes, code blocks, and links are all available from the toolbar. There is no need to think in Markdown syntax unless you want to.</p>
+<p>editorapp uses a rich text editor (Quill) as its primary surface. You write and format as you would in any word processor — headings, bold, italic, lists, blockquotes, code blocks, and links are all available from the toolbar. There is no need to think in Markdown syntax unless you want to.</p>
 <p>At the same time, every keystroke is converted to clean Markdown in the background and reflected live in the split pane. You can also edit the Markdown directly in that pane and the rich text view will update after a short pause.</p>
 
 <h2>Keyboard shortcuts</h2>
@@ -1185,7 +1185,7 @@ const WELCOME_HTML = `
 <p>Each document is stored in memory during your session. Nothing is sent to a server. Use <strong>Export Workspace</strong> to download your entire folder structure as a <code>.zip</code> of <code>.md</code> files, preserving all paths. Use <strong>Import Workspace</strong> to restore it later.</p>
 
 <h2>Hosting on GitHub Pages</h2>
-<p>Because MarkForge is a single self-contained <code>index.html</code> file with no backend and no build step, deployment is trivial:</p>
+<p>Because editorapp is a single self-contained <code>index.html</code> file with no backend and no build step, deployment is trivial:</p>
 <ol>
 <li>Create a new GitHub repository (or use an existing one).</li>
 <li>Add <code>index.html</code> to the root of the repository.</li>
@@ -1200,7 +1200,7 @@ const WELCOME_HTML = `
 <p>Version your docs alongside your code. Outdated documentation is worse than no documentation because it actively misleads. A short accurate doc is always better than a long stale one.</p>
 
 <h2>About</h2>
-<p>MarkForge is open source and MIT licensed. Contributions, issues, and forks are welcome. Built with <a href="https://quilljs.com">Quill</a>, <a href="https://github.com/mixmark-io/turndown">Turndown</a>, <a href="https://marked.js.org">Marked</a>, and <a href="https://stuk.github.io/jszip">JSZip</a> — all loaded from CDN, no <code>npm install</code> required.</p>
+<p>editorapp is open source and MIT licensed. Contributions, issues, and forks are welcome. Built with <a href="https://quilljs.com">Quill</a>, <a href="https://github.com/mixmark-io/turndown">Turndown</a>, <a href="https://marked.js.org">Marked</a>, and <a href="https://stuk.github.io/jszip">JSZip</a> — all loaded from CDN, no <code>npm install</code> required.</p>
 `;
 
 function init() {
