@@ -48,13 +48,13 @@ Nothing is persisted to localStorage — workspace lives in memory and is export
 
 **Quill toolbar overflow.** The toolbar must have `overflow: visible` (not `auto` or `hidden`). Any non-visible overflow creates a clipping context that hides the absolutely-positioned heading/format picker dropdowns. The toolbar uses `flex-wrap: nowrap` to prevent wrapping to a second row when the editor pane narrows.
 
-**Editor font.** The editor font is controlled by the `--f-editor` CSS custom property on `:root`. The navbar `#font-picker` select calls `setFont(value)` which updates the property via `document.documentElement.style.setProperty`. Available fonts: Inter (default), Merriweather, JetBrains Mono. Do not hardcode `font-family` on `.ql-editor` — always use `var(--f-editor)`.
+**Editor font.** The editor font is controlled by the `--f-editor` CSS custom property on `:root`. The navbar `#font-picker` select calls `setFont(value)` which updates the property via `document.documentElement.style.setProperty`. Available fonts: JetBrains Mono (default), Inter, Merriweather. Do not hardcode `font-family` on `.ql-editor` — always use `var(--f-editor)`.
 
 **Drawer is a push sidebar, not an overlay.** The drawer uses `width` animation (0 → `--sb-w`) inside a `#main-area` flex row. There is no full-screen overlay div. Do not revert to `position: fixed` + `transform` — that would block editor interaction.
 
 **Light is the default theme.** `:root` holds the light palette. Dark mode is activated by adding `data-theme="dark"` to `<html>`, which triggers `html[data-theme="dark"]` overrides. The module-level flag `_isDark` starts as `false`; `toggleTheme()` sets/removes the attribute and swaps the icon (moon when in light mode → click for dark; sun when in dark mode → click for light). Do not swap the palette back to dark-as-default without also updating `_isDark`, the initial SVG icon, and swapping the `:root` / `html[data-theme]` blocks.
 
-**Theme system — CSS variables only.** Every colour in the app is a CSS custom property (`--c-base`, `--c-surface`, `--c-raised`, `--c-border`, `--c-border-hi`, `--c-accent`, `--c-accent-dim`, `--c-accent2`, `--c-text`, `--c-text2`, `--c-text3`, `--c-danger`, `--c-code`). Dark mode is the default (values on `:root`). Light mode is activated by adding `data-theme="light"` to `<html>`, which triggers an `html[data-theme="light"]` block that overrides all tokens. Because Quill toolbar/editor colours and every other surface already reference these variables, the entire UI re-themes without any JavaScript DOM walking. The module-level flag `_isDark` tracks the current state; `toggleTheme()` toggles the attribute and swaps the navbar icon (moon ↔ sun).
+**Theme system — CSS variables only.** Every colour in the app is a CSS custom property (`--c-base`, `--c-surface`, `--c-raised`, `--c-border`, `--c-border-hi`, `--c-accent`, `--c-accent-dim`, `--c-accent2`, `--c-text`, `--c-text2`, `--c-text3`, `--c-danger`, `--c-code`). Light mode is the default (values on `:root`). Dark mode is activated by adding `data-theme="dark"` to `<html>`, which triggers an `html[data-theme="dark"]` block that overrides all tokens. Because Quill toolbar/editor colours and every other surface already reference these variables, the entire UI re-themes without any JavaScript DOM walking. The module-level flag `_isDark` tracks the current state; `toggleTheme()` toggles the attribute and swaps the navbar icon (moon ↔ sun).
 
 **Markdown button is not a standard icon button.** `#btn-split` extends `.nav-btn` with custom overrides: `width: auto`, horizontal padding, a teal-tinted border, and an inline `<span>Markdown</span>` text label. Its active state fills solid accent with black text. Do not remove the `<span>` or collapse it back to icon-only — the visible label is an explicit UX requirement.
 
@@ -111,9 +111,9 @@ No build step. No CI needed. `git push` = deploy.
 
 | Font | Stack | Purpose |
 |---|---|---|
-| Inter | `'Inter', sans-serif` | Default editor font — modern, readable |
+| JetBrains Mono | `'JetBrains Mono', monospace` | **Default** editor font — also used for UI (`--f-mono`) |
+| Inter | `'Inter', sans-serif` | Sans-serif option — modern, readable |
 | Merriweather | `'Merriweather', serif` | Serif option for long-form reading |
-| JetBrains Mono | `'JetBrains Mono', monospace` | Monospace — also used for UI (`--f-mono`) |
 
 All three are loaded from Google Fonts. Syne remains the UI font (`--f-ui`).
 
