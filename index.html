@@ -422,6 +422,54 @@ body.drawer-open #drawer { width: var(--sb-w); }
 /* ─── SCROLLBAR GLOBAL ───────────────────────────────────── */
 * { scrollbar-width: thin; scrollbar-color: var(--c-border) transparent; }
 input[type=file] { display: none; }
+
+/* ─── LIGHT THEME ────────────────────────────────────────── */
+html[data-theme="light"] {
+  --c-base:       #f0f2f5;
+  --c-surface:    #ffffff;
+  --c-raised:     #e5e8ed;
+  --c-border:     #cdd3da;
+  --c-border-hi:  #b0bac4;
+  --c-accent:     #009b8e;
+  --c-accent-dim: rgba(0,155,142,0.12);
+  --c-accent2:    #d46a20;
+  --c-text:       #111820;
+  --c-text2:      #3d5060;
+  --c-text3:      #8098a8;
+  --c-danger:     #c03040;
+  --c-code:       #0a7050;
+}
+html[data-theme="light"] body { background: var(--c-base); }
+html[data-theme="light"] .modal-overlay { background: rgba(0,0,0,0.45); }
+html[data-theme="light"] #md-textarea  { color: var(--c-code); }
+
+/* ─── MARKDOWN SPLIT BUTTON ──────────────────────────────── */
+#btn-split {
+  width: auto;
+  padding: 0 12px 0 10px;
+  gap: 6px;
+  border: 1.5px solid rgba(0,216,200,0.45);
+  border-radius: 8px;
+  color: var(--c-accent);
+  font-family: var(--f-ui);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+#btn-split:hover {
+  background: var(--c-accent-dim);
+  border-color: var(--c-accent);
+  color: var(--c-accent);
+}
+#btn-split.active {
+  background: var(--c-accent);
+  border-color: var(--c-accent);
+  color: #000;
+}
+#btn-split.active::after { display: none; }
+html[data-theme="light"] #btn-split {
+  border-color: rgba(0,155,142,0.45);
+}
 </style>
 </head>
 <body>
@@ -445,10 +493,16 @@ input[type=file] { display: none; }
     </select>
 
     <button class="nav-btn" id="btn-split" onclick="toggleSplit()" title="Toggle Markdown split (⌘M)">
-      <!-- Two columns icon -->
       <svg viewBox="0 0 24 24">
         <rect x="2"  y="3" width="9" height="18" rx="1.5"/>
         <rect x="13" y="3" width="9" height="18" rx="1.5"/>
+      </svg>
+      <span>Markdown</span>
+    </button>
+
+    <button class="nav-btn" id="btn-theme" onclick="toggleTheme()" title="Toggle dark/light mode">
+      <svg id="theme-icon" viewBox="0 0 24 24">
+        <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>
       </svg>
     </button>
 
@@ -667,6 +721,23 @@ function toggleSplit() {
   document.body.classList.toggle('split-active', S.splitOpen);
   document.getElementById('btn-split').classList.toggle('active', S.splitOpen);
   if (S.splitOpen) syncMdPane();
+}
+
+// ─── THEME ────────────────────────────────────────────────
+let _isDark = true;
+function toggleTheme() {
+  _isDark = !_isDark;
+  const html = document.documentElement;
+  const icon = document.getElementById('theme-icon');
+  if (_isDark) {
+    html.removeAttribute('data-theme');
+    // Moon icon
+    icon.innerHTML = '<path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>';
+  } else {
+    html.setAttribute('data-theme', 'light');
+    // Sun icon
+    icon.innerHTML = '<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>';
+  }
 }
 
 function toggleDrawer() { S.drawerOpen ? closeDrawer() : openDrawer(); }
@@ -1230,7 +1301,18 @@ function init() {
   S.files.push(welcome);
   renderTree();
   openFile(welcome.id);
-  if (window.innerWidth > 767) openDrawer();
+
+  if (window.innerWidth > 1200) {
+    // Large desktop: show sidebar + markdown pane for 5 s then collapse
+    openDrawer();
+    toggleSplit();
+    setTimeout(() => {
+      closeDrawer();
+      if (S.splitOpen) toggleSplit();
+    }, 5000);
+  } else if (window.innerWidth > 767) {
+    openDrawer();
+  }
 }
 
 init();

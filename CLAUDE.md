@@ -14,8 +14,9 @@ A single-file, mobile-first documentation editor. The **entire application lives
 ## Architecture
 
 ### Layout model
-- **Navbar** — always visible. Hamburger toggles the file drawer; font picker selects editor font; split button toggles markdown pane.
-- **File drawer** — inline push sidebar on the left (animates `width` 0 → 280px). Pushes the editor; does NOT overlay it, so the editor stays interactive while the drawer is open. Open by default on desktop (`>767px`), hidden by default on mobile.
+- **Navbar** — always visible. Contains (left→right): hamburger (`#btn-drawer`) toggles the file drawer; filename display; font picker; **Markdown split button** (`#btn-split`, pill-shaped with icon + "Markdown" text label, accent-coloured); **dark/light mode toggle** (`#btn-theme`, moon/sun icon); divider; save button.
+- **File drawer** — inline push sidebar on the left (animates `width` 0 → 280px). Pushes the editor; does NOT overlay it, so the editor stays interactive while the drawer is open. Open by default on desktop (`>767px`), hidden by default on mobile (`≤767px`).
+- **Desktop onboarding auto-collapse** — on first load at `>1200px`, both the file drawer and the markdown pane open automatically so the user can see all panels. After **5 seconds** both collapse via a `setTimeout` in `init()`. This is a one-time hint; toggling either panel manually after that works normally.
 - **Editor pane** — always fills remaining space. Quill renders here. Content width is capped at `856px` via `max-width` + `margin: auto` so text never reflows when the drawer toggles.
 - **Markdown pane** — hidden by default. On desktop: slides in as a split (resizable divider). On mobile (`≤767px`): replaces the editor pane full-screen.
 
@@ -50,6 +51,12 @@ Nothing is persisted to localStorage — workspace lives in memory and is export
 **Editor font.** The editor font is controlled by the `--f-editor` CSS custom property on `:root`. The navbar `#font-picker` select calls `setFont(value)` which updates the property via `document.documentElement.style.setProperty`. Available fonts: Inter (default), Merriweather, JetBrains Mono. Do not hardcode `font-family` on `.ql-editor` — always use `var(--f-editor)`.
 
 **Drawer is a push sidebar, not an overlay.** The drawer uses `width` animation (0 → `--sb-w`) inside a `#main-area` flex row. There is no full-screen overlay div. Do not revert to `position: fixed` + `transform` — that would block editor interaction.
+
+**Theme system — CSS variables only.** Every colour in the app is a CSS custom property (`--c-base`, `--c-surface`, `--c-raised`, `--c-border`, `--c-border-hi`, `--c-accent`, `--c-accent-dim`, `--c-accent2`, `--c-text`, `--c-text2`, `--c-text3`, `--c-danger`, `--c-code`). Dark mode is the default (values on `:root`). Light mode is activated by adding `data-theme="light"` to `<html>`, which triggers an `html[data-theme="light"]` block that overrides all tokens. Because Quill toolbar/editor colours and every other surface already reference these variables, the entire UI re-themes without any JavaScript DOM walking. The module-level flag `_isDark` tracks the current state; `toggleTheme()` toggles the attribute and swaps the navbar icon (moon ↔ sun).
+
+**Markdown button is not a standard icon button.** `#btn-split` extends `.nav-btn` with custom overrides: `width: auto`, horizontal padding, a teal-tinted border, and an inline `<span>Markdown</span>` text label. Its active state fills solid accent with black text. Do not remove the `<span>` or collapse it back to icon-only — the visible label is an explicit UX requirement.
+
+**Desktop auto-collapse is a one-shot timer.** The `setTimeout` in `init()` fires once, 5 seconds after page load, and closes the drawer + markdown pane if both were auto-opened. It does not run again. If the user manually opens either panel before the timer fires, `closeDrawer()` / `toggleSplit()` will still execute — this is acceptable because the user can re-open immediately and the timer is short.
 
 ### Drag & drop (file tree)
 - `applyDrag(row, type, id)` — makes a row draggable, sets `drag.type` / `drag.id` on dragstart
@@ -101,3 +108,6 @@ All three are loaded from Google Fonts. Syne remains the UI font (`--f-ui`).
 - `TurndownService` is instantiated once as `TD` at the top level. It's stateless and safe to reuse.
 - On iOS Safari, `100vh` includes the browser chrome. The app uses `100dvh` to avoid this.
 - The modal system is imperative (creates/removes DOM nodes). There is intentionally no modal state in `S` — keep it that way to avoid re-render complexity.
+- Light theme colours are tuned for WCAG contrast against `#f0f2f5`. If changing `--c-accent` in light mode, re-verify contrast on both `--c-surface` and `--c-base` backgrounds.
+- The auto-collapse timer in `init()` uses the module-level `S.splitOpen` flag to decide whether to call `toggleSplit()`. If you restructure `init()`, ensure the split state is set before the timer callback runs.
+- `#btn-split` has explicit `width: auto` to accommodate the text label — do not apply a fixed `width` via `.nav-btn` overrides or the text will be clipped.
