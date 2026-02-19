@@ -196,7 +196,7 @@ body.split-active #md-pane { width: 40%; }
 /* ─── MARKDOWN PANE TABS ─────────────────────────────────── */
 #md-tabbar {
   display: flex; align-items: stretch;
-  height: 30px; flex-shrink: 0;
+  height: var(--tab-h); flex-shrink: 0;
   background: var(--c-base);
   border-bottom: 1px solid var(--c-border);
   overflow-x: auto; overflow-y: hidden;
@@ -282,7 +282,7 @@ body.split-active #md-pane { width: 40%; }
 .ql-editor h2 { font-size: 1.45em; font-weight: 700; color: var(--c-text); margin: 1.4em 0 0.4em; }
 .ql-editor h3 { font-size: 1.15em; font-weight: 600; color: var(--c-text2); margin: 1.2em 0 0.3em; }
 .ql-editor p  { margin-bottom: 0.9em; }
-.ql-editor a  { color: var(--c-accent); text-decoration: underline; text-underline-offset: 2px; }
+.ql-editor a  { color: var(--c-accent); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
 .ql-editor strong { color: var(--c-text); }
 .ql-editor em     { color: var(--c-text2); }
 .ql-editor code {
@@ -548,9 +548,6 @@ html[data-theme="light"] #btn-split {
     </button>
   </nav>
 
-  <!-- ── TABS ── -->
-  <div id="tabbar"></div>
-
   <!-- ── MAIN AREA: DRAWER + CONTENT SIDE BY SIDE ── -->
   <div id="main-area">
 
@@ -585,6 +582,7 @@ html[data-theme="light"] #btn-split {
 
       <!-- Editor pane (always primary) -->
       <div id="editor-pane">
+        <div id="tabbar"></div>
         <div id="editor-area">
           <div id="empty-state">
             <div class="empty-mark">#</div>
@@ -822,51 +820,70 @@ function applyDrag(row, type, id) {
 function applyFolderDrop(row, folderId) {
   row.addEventListener('dragover', e => {
     if (!drag.id || drag.id === folderId) return;
-    e.preventDefault(); e.stopPropagation();
-    // Prevent dropping a folder into its own descendant
     if (drag.type === 'folder' && isFolderDescendant(folderId, drag.id)) return;
+    e.preventDefault(); e.stopPropagation();
     clearDropStyles();
-    row.classList.add('drop-into');
+    const rect = row.getBoundingClientRect();
+    const zone = (e.clientY - rect.top) / rect.height;
+    if (zone < 0.25)      row.classList.add('drop-above');
+    else if (zone > 0.75) row.classList.add('drop-below');
+    else                  row.classList.add('drop-into');
     e.dataTransfer.dropEffect = 'move';
   });
   row.addEventListener('dragleave', e => {
-    if (!row.contains(e.relatedTarget)) row.classList.remove('drop-into');
+    if (!row.contains(e.relatedTarget))
+      row.classList.remove('drop-into', 'drop-above', 'drop-below');
   });
   row.addEventListener('drop', e => {
     e.preventDefault(); e.stopPropagation();
     if (!drag.id || drag.id === folderId) { clearDropStyles(); return; }
     if (drag.type === 'folder' && isFolderDescendant(folderId, drag.id)) { clearDropStyles(); return; }
-    if (drag.type === 'file') {
-      const f = getFile(drag.id);
-      if (f) f.folderId = folderId;
-    } else {
-      const f = getFolder(drag.id);
-      if (f) f.parentId = folderId;
-    }
+    const above = row.classList.contains('drop-above');
+    const below = row.classList.contains('drop-below');
     clearDropStyles();
+    if (above || below) {
+      // Reorder above/below this folder (within its parent)
+      const refParent = getFolder(folderId)?.parentId ?? null;
+      if (drag.type === 'folder') {
+        moveItem('folder', drag.id, 'folder', folderId, refParent, above);
+      } else {
+        // Move file to the folder's parent level (folders always render before files)
+        const f = getFile(drag.id);
+        if (f) f.folderId = refParent;
+      }
+    } else {
+      // Drop into folder
+      if (drag.type === 'file') {
+        const f = getFile(drag.id);
+        if (f) f.folderId = folderId;
+      } else {
+        const f = getFolder(drag.id);
+        if (f) f.parentId = folderId;
+      }
+    }
     renderTree();
   });
 }
 
 function applyRowDrop(row, type, id, parentId) {
-  // Drop above/below for reordering within same parent
+  // Handles above/below reordering for file rows only;
+  // folder rows are fully handled by applyFolderDrop
   row.addEventListener('dragover', e => {
     if (!drag.id || drag.id === id) return;
-    // If dragging over a folder row, prefer "into" — handled by applyFolderDrop
     if (type === 'folder') return;
     e.preventDefault(); e.stopPropagation();
     clearDropStyles();
     const rect = row.getBoundingClientRect();
-    const half = rect.top + rect.height / 2;
-    row.classList.add(e.clientY < half ? 'drop-above' : 'drop-below');
+    row.classList.add(e.clientY < rect.top + rect.height / 2 ? 'drop-above' : 'drop-below');
     e.dataTransfer.dropEffect = 'move';
   });
   row.addEventListener('dragleave', e => {
-    if (!row.contains(e.relatedTarget)) row.classList.remove('drop-above','drop-below');
+    if (!row.contains(e.relatedTarget)) row.classList.remove('drop-above', 'drop-below');
   });
   row.addEventListener('drop', e => {
     e.preventDefault(); e.stopPropagation();
     if (!drag.id || drag.id === id) { clearDropStyles(); return; }
+    if (type === 'folder') return;  // let applyFolderDrop handle it
     const above = row.classList.contains('drop-above');
     clearDropStyles();
     moveItem(drag.type, drag.id, type, id, parentId, above);
@@ -1284,6 +1301,17 @@ document.addEventListener('keydown', e => {
 });
 
 // ═══════════════════════════════════════════════════════════
+// CTRL+CLICK LINKS IN EDITOR
+// ═══════════════════════════════════════════════════════════
+document.getElementById('editor-pane').addEventListener('click', e => {
+  if (!(e.ctrlKey || e.metaKey)) return;
+  const a = e.target.closest('a[href]');
+  if (!a) return;
+  e.preventDefault();
+  window.open(a.href, '_blank', 'noopener');
+});
+
+// ═══════════════════════════════════════════════════════════
 // DRAG & DROP FILES
 // ═══════════════════════════════════════════════════════════
 document.addEventListener('dragover', e => e.preventDefault());
@@ -1305,17 +1333,13 @@ document.addEventListener('drop', e => {
 // ═══════════════════════════════════════════════════════════
 // WELCOME & INIT
 // ═══════════════════════════════════════════════════════════
-const WELCOME_HTML = `
-<h1>Welcome to editorapp</h1>
+const WELCOME_HTML = `<h1>Welcome to editorapp</h1>
 <p>A minimal, mobile-first documentation editor. Write in rich text — the Markdown source updates live alongside. Everything lives in a single <code>index.html</code> file you can self-host for free on GitHub Pages.</p>
-
 <h2>Getting started</h2>
-<p>Tap the <strong>☰ menu</strong> (top left) to open the file explorer. From there you can create files and folders, rename them, reorder them by dragging, and import or export your work. Hit the <strong>split view button</strong> (top right) to reveal the raw Markdown pane alongside the editor. On mobile, this swaps between the two views full-screen.</p>
-
+<p>Tap the <strong>☰ menu</strong> (top left) to open the file explorer. From there you can create files and folders, rename them, reorder them by dragging, and import or export your work. Hit the <strong>Markdown</strong> button (top right) to reveal the raw Markdown pane alongside the editor. On mobile, this swaps between the two views full-screen.</p>
 <h2>The editor</h2>
 <p>editorapp uses a rich text editor (Quill) as its primary surface. You write and format as you would in any word processor — headings, bold, italic, lists, blockquotes, code blocks, and links are all available from the toolbar. There is no need to think in Markdown syntax unless you want to.</p>
-<p>At the same time, every keystroke is converted to clean Markdown in the background and reflected live in the split pane. You can also edit the Markdown directly in that pane and the rich text view will update after a short pause.</p>
-
+<p>Every keystroke is converted to clean Markdown in the background and reflected live in the split pane. You can also edit the Markdown directly in that pane and the rich text view will update after a short pause. Links in the editor open in a new tab on <strong>Ctrl+click</strong>.</p>
 <h2>Keyboard shortcuts</h2>
 <ul>
 <li><code>⌘/Ctrl + M</code> — toggle Markdown split view</li>
@@ -1325,11 +1349,9 @@ const WELCOME_HTML = `
 <li><code>⌘/Ctrl + F</code> — toggle file explorer</li>
 <li><code>Esc</code> — close file explorer</li>
 </ul>
-
 <h2>File organisation</h2>
-<p>Files live inside a folder tree in the explorer drawer. You can nest folders to any depth. To move a file or folder, grab its row and drag it — drop onto a folder to move inside it, or drop between rows to reorder. Changes are reflected immediately.</p>
+<p>Files live inside a folder tree in the explorer drawer. You can nest folders to any depth. Drag a file or folder to reorder it — drop onto the middle of a folder to move inside it, or near the top or bottom edge to reorder above or below it. Moving a folder moves all its contents with it.</p>
 <p>Each document is stored in memory during your session. Nothing is sent to a server. Use <strong>Export Workspace</strong> to download your entire folder structure as a <code>.zip</code> of <code>.md</code> files, preserving all paths. Use <strong>Import Workspace</strong> to restore it later.</p>
-
 <h2>Hosting on GitHub Pages</h2>
 <p>Because editorapp is a single self-contained <code>index.html</code> file with no backend and no build step, deployment is trivial:</p>
 <ol>
@@ -1339,12 +1361,10 @@ const WELCOME_HTML = `
 <li>GitHub will publish it at <code>https://&lt;your-username&gt;.github.io/&lt;repo-name&gt;</code> within a minute.</li>
 </ol>
 <p>To use a custom domain, add a <code>CNAME</code> file containing your domain name to the repository root, then point your DNS to GitHub's servers. HTTPS is provisioned automatically.</p>
-
 <h2>Tips for good documentation</h2>
 <p>Good documentation is written for a specific reader with a specific goal. Before writing, ask: who is this for, and what do they need to be able to do after reading it? Structure your answer around tasks, not features. Use short sentences. Prefer active voice. Put the most important information first.</p>
 <p>Use headings to help readers scan — a reader should be able to understand the shape of a document from its headings alone without reading the body text. Use code blocks for anything a reader might copy. Use lists when you have more than two parallel items. Use bold sparingly, only for things that genuinely must not be missed.</p>
 <p>Version your docs alongside your code. Outdated documentation is worse than no documentation because it actively misleads. A short accurate doc is always better than a long stale one.</p>
-
 <h2>About</h2>
 <p>editorapp is open source and MIT licensed. Contributions, issues, and forks are welcome. Built with <a href="https://quilljs.com">Quill</a>, <a href="https://github.com/mixmark-io/turndown">Turndown</a>, <a href="https://marked.js.org">Marked</a>, and <a href="https://stuk.github.io/jszip">JSZip</a> — all loaded from CDN, no <code>npm install</code> required.</p>
 `;
