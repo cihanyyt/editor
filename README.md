@@ -17,6 +17,7 @@ Most documentation tools are either too heavy (full IDEs, npm setups, cloud acco
 ### Writing
 - **Rich text editor** powered by Quill — headings, bold, italic, lists, blockquotes, code blocks, links
 - **Instant cursor on new files** — new files open empty with the cursor already blinking at position 0, ready to type
+- **Clickable links** — hold `Ctrl` (or `Cmd`) and click any link in the editor to open it in a new tab; protocol-less URLs like `www.example.com` are handled correctly
 - **Live Markdown split pane** — every keystroke converts to clean Markdown in real time (150 ms debounce)
 - **Bidirectional sync** — edit the Markdown directly in the split pane; the rich text view updates after a short pause
 - **Resizable split divider** — drag to set your preferred editor/markdown ratio on desktop
@@ -24,8 +25,9 @@ Most documentation tools are either too heavy (full IDEs, npm setups, cloud acco
 
 ### Organisation
 - **File & folder tree** — create, rename, nest, and delete files and folders
-- **Drag & drop reordering** — drag files between folders or reorder within a folder
+- **Drag & drop reordering** — drag files and folders with three drop zones per row: top edge reorders above, bottom edge reorders below, middle drops inside a folder; moving a folder moves all its contents
 - **Multi-tab interface** — keep several files open and switch between them without losing edits
+- **Unified tab bar** — the editor tabs and Markdown pane tabs sit at the same vertical level, forming a continuous strip across the full split width
 - **Markdown pane tabs** — the Markdown split pane has its own tab bar mirroring all open files; tabs slide in from the right and let you switch files without leaving the Markdown view
 
 ### Workspace
@@ -88,5 +90,8 @@ This project was designed and built entirely through [Claude Code](https://claud
 - The drag-and-drop file tree with descendant-cycle protection
 - The empty-file cursor UX (placeholder suppressed, auto-focus at position 0)
 - The markdown pane tab bar with slide-in animation and active-file indicator
+- The unified tab bar layout (editor and markdown tabs at identical vertical level)
+- The three-zone folder drag & drop (reorder above/below/into, folders carry their contents)
+- The Ctrl+click link handler with protocol-less URL correction
 
 > If you're curious how it was built, read [`CLAUDE.md`](./CLAUDE.md) — it documents every architectural pattern and quirk for the AI assistant to reference across sessions.

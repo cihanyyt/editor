@@ -17,8 +17,8 @@ A single-file, mobile-first documentation editor. The **entire application lives
 - **Navbar** — always visible. Contains (left→right): hamburger (`#btn-drawer`) toggles the file drawer; filename display; font picker; **Markdown split button** (`#btn-split`, pill-shaped with icon + "Markdown" text label, accent-coloured); **dark/light mode toggle** (`#btn-theme`, moon/sun icon); divider; save button.
 - **File drawer** — inline push sidebar on the left (animates `width` 0 → 280px). Pushes the editor; does NOT overlay it, so the editor stays interactive while the drawer is open. Open by default on desktop (`>767px`), hidden by default on mobile (`≤767px`).
 - **Desktop onboarding auto-collapse** — on first load at `>1200px`, both the file drawer and the markdown pane open automatically so the user can see all panels. After **5 seconds** both collapse via a `setTimeout` in `init()`. This is a one-time hint; toggling either panel manually after that works normally.
-- **Editor pane** — always fills remaining space. Quill renders here. Content width is capped at `856px` via `max-width` + `margin: auto` so text never reflows when the drawer toggles.
-- **Markdown pane** — hidden by default. On desktop: slides in as a split (resizable divider). On mobile (`≤767px`): replaces the editor pane full-screen. Contains a `#md-tabbar` at the top that mirrors all open file tabs; clicking a tab switches both the editor and markdown view to that file. Tabs slide in from the right via CSS animation.
+- **Editor pane** — always fills remaining space. Quill renders here. Content width is capped at `856px` via `max-width` + `margin: auto` so text never reflows when the drawer toggles. `#tabbar` lives **inside** `#editor-pane` as its first flex child (not between `#navbar` and `#main-area`) so it sits at the same vertical level as `#md-tabbar`.
+- **Markdown pane** — hidden by default. On desktop: slides in as a split (resizable divider). On mobile (`≤767px`): replaces the editor pane full-screen. Contains `#md-tabbar` as its first flex child (height: `var(--tab-h)` to match the editor tab bar), then `.md-pane-header`, then `#md-textarea`. Tabs mirror `S.openTabs`, slide in from the right, and switch both the editor and markdown view on click.
 
 ### State object (`S`)
 All runtime state lives in a single object:
@@ -62,12 +62,14 @@ Nothing is persisted to localStorage — workspace lives in memory and is export
 
 **Markdown pane tab bar (`#md-tabbar`).** Sits above `.md-pane-header` inside `#md-pane`. Rendered by `renderMdTabs()`, which is called from `renderTabs()` (keeping it in sync with every open/close/switch operation) and from `toggleSplit()` (populating it when the pane first opens). Each tab uses the `.md-tab` class with a right-to-left slide-in animation (`@keyframes md-tab-in`). The active tab has a 2px teal top border and code-colour text. Clicking any tab calls `switchTab(id)` — the editor and markdown pane always show the same file. There is no independent "markdown-only" browsing mode.
 
+**Ctrl+click links.** A delegated `click` listener on `#editor-pane` (which is never torn down) intercepts clicks where `e.ctrlKey || e.metaKey` is true and the target is inside an `<a href>`. It reads the raw `href` attribute (not `a.href`) to avoid the browser resolving protocol-less values like `www.google.com` as relative paths against the page base URL. If no URL scheme is detected (regex `/^[a-z][a-z\d+\-.]*:/i`), `https://` is prepended before calling `window.open`. Do not use `a.href` (the DOM property) here — it always returns an absolute URL resolved against the page origin.
+
 ### Drag & drop (file tree)
 - `applyDrag(row, type, id)` — makes a row draggable, sets `drag.type` / `drag.id` on dragstart
-- `applyFolderDrop(row, folderId)` — handles dropping **into** a folder (highlights with dashed accent border)
-- `applyRowDrop(row, type, id, parentId)` — handles dropping **above/below** a row (shows 2px accent line)
+- `applyFolderDrop(row, folderId)` — handles all interactions when hovering over a folder row using **three vertical zones**: top 25% → `drop-above` (reorder before folder), middle 50% → `drop-into` (move inside folder), bottom 25% → `drop-below` (reorder after folder). Drop into moves the item into the folder; drop above/below reorders among siblings using `moveItem` for folder→folder, or changes `folderId` to the target folder's parent for file→folder.
+- `applyRowDrop(row, type, id, parentId)` — handles above/below reordering for **file rows only**. Its `dragover` and `drop` handlers both early-return for `type === 'folder'` to prevent double-firing with `applyFolderDrop`.
 - `isFolderDescendant(targetId, ancestorId)` — guards against dropping a folder into its own subtree
-- `moveItem(...)` — splices the item to the correct position in `S.files` or `S.folders`
+- `moveItem(...)` — splices the item to the correct position in `S.files` or `S.folders`; child files/folders move with their parent automatically because they reference parent by ID, not by array position
 
 ## File structure
 
@@ -117,3 +119,5 @@ All three are loaded from Google Fonts. Syne remains the UI font (`--f-ui`).
 - `#btn-split` has explicit `width: auto` to accommodate the text label — do not apply a fixed `width` via `.nav-btn` overrides or the text will be clipped.
 - Do not re-add a Quill `placeholder` string or restore `.ql-editor.ql-blank::before` content — the intentionally empty editor with auto-focus is the designed behaviour for new files.
 - `#md-tabbar` uses `:empty { display: none }` so it collapses cleanly when no tabs are open (e.g. right after a workspace wipe). Do not add a minimum height or it will show as a blank strip.
+- `#tabbar` is now inside `#editor-pane`, not between `#navbar` and `#main-area`. If you move it back out, the two tab bars will no longer be vertically aligned.
+- Protocol-less link values (`www.example.com`) stored by Quill must be opened using the raw `getAttribute('href')` + scheme-prefix logic, not `a.href` (DOM property). Using `a.href` resolves them as relative paths against the page's base URL and sends the user to the wrong location.
