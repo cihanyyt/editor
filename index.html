@@ -193,6 +193,43 @@ body.split-active #md-pane { width: 40%; }
 #md-textarea::-webkit-scrollbar { width: 4px; }
 #md-textarea::-webkit-scrollbar-thumb { background: var(--c-border-hi); border-radius: 2px; }
 
+/* ─── MARKDOWN PANE TABS ─────────────────────────────────── */
+#md-tabbar {
+  display: flex; align-items: stretch;
+  height: 30px; flex-shrink: 0;
+  background: var(--c-base);
+  border-bottom: 1px solid var(--c-border);
+  overflow-x: auto; overflow-y: hidden;
+  scrollbar-width: none;
+}
+#md-tabbar::-webkit-scrollbar { display: none; }
+#md-tabbar:empty { display: none; }
+
+.md-tab {
+  display: flex; align-items: center;
+  padding: 0 11px; min-width: 0; max-width: 140px;
+  font-size: 10px; font-family: var(--f-mono);
+  color: var(--c-text3); cursor: pointer; flex-shrink: 0;
+  border-right: 1px solid var(--c-border);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  transition: color 0.12s, background 0.12s;
+  position: relative;
+  animation: md-tab-in 0.18s ease;
+}
+.md-tab:hover { color: var(--c-text2); background: var(--c-raised); }
+.md-tab.active {
+  color: var(--c-code); background: var(--c-surface);
+}
+.md-tab.active::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0;
+  height: 2px; background: var(--c-accent); border-radius: 0 0 2px 2px;
+}
+
+@keyframes md-tab-in {
+  from { opacity: 0; transform: translateX(10px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
 /* ─── MOBILE: full-screen swap ───────────────────────────── */
 @media (max-width: 767px) {
   body.split-active #md-pane    { width: 100%; }
@@ -235,10 +272,8 @@ body.split-active #md-pane { width: 40%; }
 }
 .ql-editor::-webkit-scrollbar { width: 4px; }
 .ql-editor::-webkit-scrollbar-thumb { background: var(--c-border-hi); border-radius: 3px; }
-.ql-editor.ql-blank::before {
-  color: var(--c-text3); font-style: normal;
-  font-family: var(--f-mono); font-size: 13px;
-}
+/* placeholder intentionally hidden — cursor auto-focuses on open */
+.ql-editor.ql-blank::before { display: none; }
 .ql-editor h1 {
   font-size: 2em; font-weight: 800; color: var(--c-text);
   margin-bottom: 0.6em; line-height: 1.2;
@@ -564,6 +599,7 @@ html[data-theme="light"] #btn-split {
 
       <!-- Markdown pane -->
       <div id="md-pane">
+        <div id="md-tabbar"></div>
         <div class="md-pane-header">
           <span class="md-pane-label">Markdown Source</span>
           <button class="btn sm ghost" onclick="copyMarkdown()">Copy</button>
@@ -638,7 +674,6 @@ function initQuill(html) {
 
   quill = new Quill('#quill-mount', {
     theme: 'snow',
-    placeholder: 'Start writing…',
     modules: {
       toolbar: [
         [{ header: [1, 2, 3, false] }],
@@ -663,6 +698,9 @@ function initQuill(html) {
   });
 
   if (S.splitOpen) syncMdPane();
+  // Always focus so cursor is visible immediately; position 0 for empty files
+  quill.focus();
+  if (!html) quill.setSelection(0, 0);
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -720,7 +758,7 @@ function toggleSplit() {
   S.splitOpen = !S.splitOpen;
   document.body.classList.toggle('split-active', S.splitOpen);
   document.getElementById('btn-split').classList.toggle('active', S.splitOpen);
-  if (S.splitOpen) syncMdPane();
+  if (S.splitOpen) { syncMdPane(); renderMdTabs(); }
 }
 
 // ─── THEME ────────────────────────────────────────────────
@@ -940,6 +978,24 @@ function renderTabs() {
     bar.appendChild(tab);
     // Scroll active tab into view
     if (S.activeTab === id) setTimeout(() => tab.scrollIntoView({ inline: 'nearest' }), 0);
+  });
+  renderMdTabs();
+}
+
+function renderMdTabs() {
+  const bar = document.getElementById('md-tabbar');
+  if (!bar) return;
+  bar.innerHTML = '';
+  S.openTabs.forEach(id => {
+    const f = getFile(id);
+    if (!f) return;
+    const tab = document.createElement('div');
+    tab.className = 'md-tab' + (S.activeTab === id ? ' active' : '');
+    tab.textContent = f.name;
+    tab.title = f.name;
+    tab.onclick = () => switchTab(id);
+    bar.appendChild(tab);
+    if (S.activeTab === id) setTimeout(() => tab.scrollIntoView({ inline: 'nearest', block: 'nearest' }), 0);
   });
 }
 
