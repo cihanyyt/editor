@@ -14,9 +14,9 @@ A single-file, mobile-first documentation editor. The **entire application lives
 ## Architecture
 
 ### Layout model
-- **Navbar** — always visible. Hamburger opens the file drawer; split button toggles markdown pane.
-- **File drawer** — slides in as an overlay from the left. Contains the full file tree, import/export actions.
-- **Editor pane** — always fills remaining space. Quill renders here.
+- **Navbar** — always visible. Hamburger toggles the file drawer; font picker selects editor font; split button toggles markdown pane.
+- **File drawer** — inline push sidebar on the left (animates `width` 0 → 280px). Pushes the editor; does NOT overlay it, so the editor stays interactive while the drawer is open. Open by default on desktop (`>767px`), hidden by default on mobile.
+- **Editor pane** — always fills remaining space. Quill renders here. Content width is capped at `856px` via `max-width` + `margin: auto` so text never reflows when the drawer toggles.
 - **Markdown pane** — hidden by default. On desktop: slides in as a split (resizable divider). On mobile (`≤767px`): replaces the editor pane full-screen.
 
 ### State object (`S`)
@@ -45,7 +45,11 @@ Nothing is persisted to localStorage — workspace lives in memory and is export
 
 **Flex height chain.** The editor scroll only works because every ancestor in the chain has `display:flex; flex-direction:column; overflow:hidden; min-height:0`. Breaking any link in this chain (e.g. a plain unstyled wrapper div) will cause the editor to expand to full content height and scroll will stop working.
 
-**Quill toolbar overflow.** The toolbar must have `overflow: visible` (not `auto` or `hidden`). Any non-visible overflow creates a clipping context that hides the absolutely-positioned heading/format picker dropdowns.
+**Quill toolbar overflow.** The toolbar must have `overflow: visible` (not `auto` or `hidden`). Any non-visible overflow creates a clipping context that hides the absolutely-positioned heading/format picker dropdowns. The toolbar uses `flex-wrap: nowrap` to prevent wrapping to a second row when the editor pane narrows.
+
+**Editor font.** The editor font is controlled by the `--f-editor` CSS custom property on `:root`. The navbar `#font-picker` select calls `setFont(value)` which updates the property via `document.documentElement.style.setProperty`. Available fonts: Inter (default), Merriweather, JetBrains Mono. Do not hardcode `font-family` on `.ql-editor` — always use `var(--f-editor)`.
+
+**Drawer is a push sidebar, not an overlay.** The drawer uses `width` animation (0 → `--sb-w`) inside a `#main-area` flex row. There is no full-screen overlay div. Do not revert to `position: fixed` + `transform` — that would block editor interaction.
 
 ### Drag & drop (file tree)
 - `applyDrag(row, type, id)` — makes a row draggable, sets `drag.type` / `drag.id` on dragstart
@@ -79,6 +83,16 @@ editorapp/
 **GitHub Pages** — push `index.html` to any public repo, enable Pages from Settings → Pages → branch `main`, root `/`. Live in ~60 seconds at `https://<username>.github.io/<repo>`.
 
 No build step. No CI needed. `git push` = deploy.
+
+## Fonts
+
+| Font | Stack | Purpose |
+|---|---|---|
+| Inter | `'Inter', sans-serif` | Default editor font — modern, readable |
+| Merriweather | `'Merriweather', serif` | Serif option for long-form reading |
+| JetBrains Mono | `'JetBrains Mono', monospace` | Monospace — also used for UI (`--f-mono`) |
+
+All three are loaded from Google Fonts. Syne remains the UI font (`--f-ui`).
 
 ## Known quirks & things to watch
 
