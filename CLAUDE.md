@@ -18,7 +18,7 @@ A single-file, mobile-first documentation editor. The **entire application lives
 - **File drawer** — inline push sidebar on the left (animates `width` 0 → 280px). Pushes the editor; does NOT overlay it, so the editor stays interactive while the drawer is open. Open by default on desktop (`>767px`), hidden by default on mobile (`≤767px`).
 - **Desktop onboarding auto-collapse** — on first load at `>1200px`, both the file drawer and the markdown pane open automatically so the user can see all panels. After **5 seconds** both collapse via a `setTimeout` in `init()`. This is a one-time hint; toggling either panel manually after that works normally.
 - **Editor pane** — always fills remaining space. Quill renders here. Content width is capped at `856px` via `max-width` + `margin: auto` so text never reflows when the drawer toggles.
-- **Markdown pane** — hidden by default. On desktop: slides in as a split (resizable divider). On mobile (`≤767px`): replaces the editor pane full-screen.
+- **Markdown pane** — hidden by default. On desktop: slides in as a split (resizable divider). On mobile (`≤767px`): replaces the editor pane full-screen. Contains a `#md-tabbar` at the top that mirrors all open file tabs; clicking a tab switches both the editor and markdown view to that file. Tabs slide in from the right via CSS animation.
 
 ### State object (`S`)
 All runtime state lives in a single object:
@@ -57,6 +57,10 @@ Nothing is persisted to localStorage — workspace lives in memory and is export
 **Markdown button is not a standard icon button.** `#btn-split` extends `.nav-btn` with custom overrides: `width: auto`, horizontal padding, a teal-tinted border, and an inline `<span>Markdown</span>` text label. Its active state fills solid accent with black text. Do not remove the `<span>` or collapse it back to icon-only — the visible label is an explicit UX requirement.
 
 **Desktop auto-collapse is a one-shot timer.** The `setTimeout` in `init()` fires once, 5 seconds after page load, and closes the drawer + markdown pane if both were auto-opened. It does not run again. If the user manually opens either panel before the timer fires, `closeDrawer()` / `toggleSplit()` will still execute — this is acceptable because the user can re-open immediately and the timer is short.
+
+**Quill placeholder is disabled.** The `placeholder` option is intentionally omitted from the Quill constructor and `.ql-editor.ql-blank::before` is set to `display: none`. This prevents the ghost "Start writing…" text from appearing in empty files, which caused the cursor to land mid-word on click. Instead, `initQuill()` calls `quill.focus()` and `quill.setSelection(0, 0)` after mounting so the cursor blinks at position 0 immediately — no click required. Do not re-add a placeholder string.
+
+**Markdown pane tab bar (`#md-tabbar`).** Sits above `.md-pane-header` inside `#md-pane`. Rendered by `renderMdTabs()`, which is called from `renderTabs()` (keeping it in sync with every open/close/switch operation) and from `toggleSplit()` (populating it when the pane first opens). Each tab uses the `.md-tab` class with a right-to-left slide-in animation (`@keyframes md-tab-in`). The active tab has a 2px teal top border and code-colour text. Clicking any tab calls `switchTab(id)` — the editor and markdown pane always show the same file. There is no independent "markdown-only" browsing mode.
 
 ### Drag & drop (file tree)
 - `applyDrag(row, type, id)` — makes a row draggable, sets `drag.type` / `drag.id` on dragstart
@@ -111,3 +115,5 @@ All three are loaded from Google Fonts. Syne remains the UI font (`--f-ui`).
 - Light theme colours are tuned for WCAG contrast against `#f0f2f5`. If changing `--c-accent` in light mode, re-verify contrast on both `--c-surface` and `--c-base` backgrounds.
 - The auto-collapse timer in `init()` uses the module-level `S.splitOpen` flag to decide whether to call `toggleSplit()`. If you restructure `init()`, ensure the split state is set before the timer callback runs.
 - `#btn-split` has explicit `width: auto` to accommodate the text label — do not apply a fixed `width` via `.nav-btn` overrides or the text will be clipped.
+- Do not re-add a Quill `placeholder` string or restore `.ql-editor.ql-blank::before` content — the intentionally empty editor with auto-focus is the designed behaviour for new files.
+- `#md-tabbar` uses `:empty { display: none }` so it collapses cleanly when no tabs are open (e.g. right after a workspace wipe). Do not add a minimum height or it will show as a blank strip.
