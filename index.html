@@ -1308,7 +1308,11 @@ document.getElementById('editor-pane').addEventListener('click', e => {
   const a = e.target.closest('a[href]');
   if (!a) return;
   e.preventDefault();
-  window.open(a.href, '_blank', 'noopener');
+  // Use the raw attribute so protocol-less URLs like "www.google.com" are
+  // not resolved as relative paths against the page base URL.
+  let url = a.getAttribute('href') || '';
+  if (url && !/^[a-z][a-z\d+\-.]*:/i.test(url)) url = 'https://' + url;
+  if (url) window.open(url, '_blank', 'noopener');
 });
 
 // ═══════════════════════════════════════════════════════════
