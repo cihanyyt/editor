@@ -16,6 +16,7 @@ Most documentation tools are either too heavy (full IDEs, npm setups, cloud acco
 
 ### Writing
 - **Rich text editor** powered by Quill — headings, bold, italic, lists, blockquotes, code blocks, links
+- **Instant cursor on new files** — new files open empty with the cursor already blinking at position 0, ready to type
 - **Live Markdown split pane** — every keystroke converts to clean Markdown in real time (150 ms debounce)
 - **Bidirectional sync** — edit the Markdown directly in the split pane; the rich text view updates after a short pause
 - **Resizable split divider** — drag to set your preferred editor/markdown ratio on desktop
@@ -25,6 +26,7 @@ Most documentation tools are either too heavy (full IDEs, npm setups, cloud acco
 - **File & folder tree** — create, rename, nest, and delete files and folders
 - **Drag & drop reordering** — drag files between folders or reorder within a folder
 - **Multi-tab interface** — keep several files open and switch between them without losing edits
+- **Markdown pane tabs** — the Markdown split pane has its own tab bar mirroring all open files; tabs slide in from the right and let you switch files without leaving the Markdown view
 
 ### Workspace
 - **Export single file** — download the active document as a `.md` file
@@ -84,5 +86,7 @@ This project was designed and built entirely through [Claude Code](https://claud
 - The CSS-variable-only theme system (dark/light with zero JS DOM walking)
 - The flex-height chain that makes the editor scroll correctly
 - The drag-and-drop file tree with descendant-cycle protection
+- The empty-file cursor UX (placeholder suppressed, auto-focus at position 0)
+- The markdown pane tab bar with slide-in animation and active-file indicator
 
 > If you're curious how it was built, read [`CLAUDE.md`](./CLAUDE.md) — it documents every architectural pattern and quirk for the AI assistant to reference across sessions.
