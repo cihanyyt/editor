@@ -21,7 +21,8 @@ Most documentation tools are either too heavy (full IDEs, npm setups, cloud acco
 - **Live Markdown split pane** — every keystroke converts to clean Markdown in real time (150 ms debounce)
 - **Bidirectional sync** — edit the Markdown directly in the split pane; the rich text view updates after a short pause
 - **Resizable split divider** — drag to set your preferred editor/markdown ratio on desktop
-- **Font picker** — switch between Inter, Merriweather, and JetBrains Mono without leaving the editor
+- **Font picker** — switch between Inter, Merriweather, and JetBrains Mono (default) without leaving the editor
+- **Font size picker** — choose from 13, 15, 16, 18, or 20 px; updates the editor instantly
 
 ### Organisation
 - **File & folder tree** — create, rename, nest, and delete files and folders
@@ -37,7 +38,9 @@ Most documentation tools are either too heavy (full IDEs, npm setups, cloud acco
 - **Import workspace** — restore a previously exported `.zip`
 
 ### UI / UX
-- **Dark and light mode** — toggle with the moon/sun button in the navbar; the full theme switches instantly via CSS variables
+- **Light mode by default** — clean, bright theme out of the box; toggle the moon/sun button for dark mode; the full theme switches instantly via CSS variables
+- **No visible scrollbars** — all scrollable areas (editor, file tree, markdown pane, tab bars) scroll normally but without a visible track
+- **Save reminder on exit** — closing or navigating away while files are open triggers a browser "Leave site?" prompt to prevent accidental data loss
 - **Mobile-first** — works on phones; the Markdown pane goes full-screen on mobile instead of splitting
 - **Desktop onboarding** — on first load at large viewport (>1200 px) both the sidebar and Markdown pane open briefly so you can see all panels, then auto-collapse after 5 seconds
 - **Keyboard shortcuts** — common actions bound to `⌘/Ctrl` combos (see below)
@@ -93,5 +96,8 @@ This project was designed and built entirely through [Claude Code](https://claud
 - The unified tab bar layout (editor and markdown tabs at identical vertical level)
 - The three-zone folder drag & drop (reorder above/below/into, folders carry their contents)
 - The Ctrl+click link handler with protocol-less URL correction
+- The font size picker wired to a CSS custom property
+- The global scrollbar-hiding approach (hidden but scrollable)
+- The beforeunload save guard and `showLeaveWarning()` export modal
 
 > If you're curious how it was built, read [`CLAUDE.md`](./CLAUDE.md) — it documents every architectural pattern and quirk for the AI assistant to reference across sessions.

@@ -16,22 +16,23 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --c-base:       #080b0f;
-  --c-surface:    #0e1318;
-  --c-raised:     #151c24;
-  --c-border:     #1e2a35;
-  --c-border-hi:  #2a3a4a;
-  --c-accent:     #00d8c8;
-  --c-accent-dim: rgba(0,216,200,0.12);
-  --c-accent2:    #f0833a;
-  --c-text:       #dce8f0;
-  --c-text2:      #7a93a6;
-  --c-text3:      #3a5060;
-  --c-danger:     #f05060;
-  --c-code:       #5de8b0;
+  --c-base:       #f0f2f5;
+  --c-surface:    #ffffff;
+  --c-raised:     #e5e8ed;
+  --c-border:     #cdd3da;
+  --c-border-hi:  #b0bac4;
+  --c-accent:     #009b8e;
+  --c-accent-dim: rgba(0,155,142,0.12);
+  --c-accent2:    #d46a20;
+  --c-text:       #111820;
+  --c-text2:      #3d5060;
+  --c-text3:      #8098a8;
+  --c-danger:     #c03040;
+  --c-code:       #0a7050;
   --f-ui:         'Syne', sans-serif;
   --f-mono:       'JetBrains Mono', monospace;
-  --f-editor:     'Inter', sans-serif;
+  --f-editor:     'JetBrains Mono', monospace;
+  --font-size-editor: 16px;
   --nav-h:        52px;
   --tab-h:        36px;
   --sb-w:         280px;
@@ -100,25 +101,25 @@ html, body {
 
 .nav-divider { width: 1px; height: 24px; background: var(--c-border); flex-shrink: 0; margin: 0 2px; }
 
-#font-picker {
+#font-picker, #size-picker {
+  height: 36px;
   background: var(--c-raised); border: 1px solid var(--c-border);
   color: var(--c-text2); font-family: var(--f-ui); font-size: 11px; font-weight: 600;
-  padding: 5px 8px; border-radius: 8px; cursor: pointer; outline: none;
+  padding: 0 10px; border-radius: 8px; cursor: pointer; outline: none;
   transition: border-color 0.15s, color 0.15s; flex-shrink: 0;
   -webkit-appearance: none; appearance: none;
 }
-#font-picker:hover  { border-color: var(--c-border-hi); color: var(--c-text); }
-#font-picker:focus  { border-color: var(--c-accent); color: var(--c-text); }
-#font-picker option { background: var(--c-raised); }
+#font-picker:hover,  #size-picker:hover  { border-color: var(--c-border-hi); color: var(--c-text); }
+#font-picker:focus,  #size-picker:focus  { border-color: var(--c-accent); color: var(--c-text); }
+#font-picker option, #size-picker option { background: var(--c-raised); }
+#size-picker { width: 52px; text-align: center; }
 
 /* ─── TAB BAR ────────────────────────────────────────────── */
 #tabbar {
   height: var(--tab-h); display: flex; align-items: stretch;
   background: var(--c-base); border-bottom: 1px solid var(--c-border);
   overflow-x: auto; overflow-y: hidden; flex-shrink: 0;
-  scrollbar-width: none;
 }
-#tabbar::-webkit-scrollbar { display: none; }
 #tabbar:empty { display: none; }
 
 .tab {
@@ -190,9 +191,6 @@ body.split-active #md-pane { width: 40%; }
   padding: 20px 16px; border: none; outline: none;
   resize: none; overflow-y: auto; tab-size: 2;
 }
-#md-textarea::-webkit-scrollbar { width: 4px; }
-#md-textarea::-webkit-scrollbar-thumb { background: var(--c-border-hi); border-radius: 2px; }
-
 /* ─── MARKDOWN PANE TABS ─────────────────────────────────── */
 #md-tabbar {
   display: flex; align-items: stretch;
@@ -200,9 +198,7 @@ body.split-active #md-pane { width: 40%; }
   background: var(--c-base);
   border-bottom: 1px solid var(--c-border);
   overflow-x: auto; overflow-y: hidden;
-  scrollbar-width: none;
 }
-#md-tabbar::-webkit-scrollbar { display: none; }
 #md-tabbar:empty { display: none; }
 
 .md-tab {
@@ -263,15 +259,13 @@ body.split-active #md-pane { width: 40%; }
 .ql-editor {
   flex: 1; overflow-y: auto;
   background: var(--c-base); color: var(--c-text);
-  font-family: var(--f-editor); font-size: 16px; line-height: 1.8;
+  font-family: var(--f-editor); font-size: var(--font-size-editor); line-height: 1.8;
   padding: 28px 20px; caret-color: var(--c-accent);
   width: 100%; box-sizing: border-box;
 }
 @media (min-width: 768px) {
   .ql-editor { padding: 40px 48px; max-width: 856px; margin: 0 auto; }
 }
-.ql-editor::-webkit-scrollbar { width: 4px; }
-.ql-editor::-webkit-scrollbar-thumb { background: var(--c-border-hi); border-radius: 3px; }
 /* placeholder intentionally hidden — cursor auto-focuses on open */
 .ql-editor.ql-blank::before { display: none; }
 .ql-editor h1 {
@@ -357,8 +351,6 @@ body.drawer-open #drawer { width: var(--sb-w); }
 .drawer-actions { display: flex; gap: 3px; }
 
 #file-tree { flex: 1; overflow-y: auto; padding: 6px 0; }
-#file-tree::-webkit-scrollbar { width: 3px; }
-#file-tree::-webkit-scrollbar-thumb { background: var(--c-border); border-radius: 2px; }
 
 #drawer-footer {
   border-top: 1px solid var(--c-border); padding: 10px 12px;
@@ -433,7 +425,7 @@ body.drawer-open #drawer { width: var(--sb-w); }
 /* ─── MODAL ──────────────────────────────────────────────── */
 .modal-overlay {
   position: fixed; inset: 0; z-index: 999;
-  background: rgba(0,0,0,0.75); backdrop-filter: blur(4px);
+  background: rgba(0,0,0,0.45); backdrop-filter: blur(4px);
   display: flex; align-items: center; justify-content: center;
   padding: 20px;
 }
@@ -454,36 +446,37 @@ body.drawer-open #drawer { width: var(--sb-w); }
 .modal input:focus { border-color: var(--c-accent); }
 .modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
 
-/* ─── SCROLLBAR GLOBAL ───────────────────────────────────── */
-* { scrollbar-width: thin; scrollbar-color: var(--c-border) transparent; }
+/* ─── SCROLLBAR GLOBAL — hidden but scrollable ───────────── */
+* { scrollbar-width: none; }
+*::-webkit-scrollbar { display: none; }
 input[type=file] { display: none; }
 
-/* ─── LIGHT THEME ────────────────────────────────────────── */
-html[data-theme="light"] {
-  --c-base:       #f0f2f5;
-  --c-surface:    #ffffff;
-  --c-raised:     #e5e8ed;
-  --c-border:     #cdd3da;
-  --c-border-hi:  #b0bac4;
-  --c-accent:     #009b8e;
-  --c-accent-dim: rgba(0,155,142,0.12);
-  --c-accent2:    #d46a20;
-  --c-text:       #111820;
-  --c-text2:      #3d5060;
-  --c-text3:      #8098a8;
-  --c-danger:     #c03040;
-  --c-code:       #0a7050;
+/* ─── DARK THEME ─────────────────────────────────────────── */
+html[data-theme="dark"] {
+  --c-base:       #080b0f;
+  --c-surface:    #0e1318;
+  --c-raised:     #151c24;
+  --c-border:     #1e2a35;
+  --c-border-hi:  #2a3a4a;
+  --c-accent:     #00d8c8;
+  --c-accent-dim: rgba(0,216,200,0.12);
+  --c-accent2:    #f0833a;
+  --c-text:       #dce8f0;
+  --c-text2:      #7a93a6;
+  --c-text3:      #3a5060;
+  --c-danger:     #f05060;
+  --c-code:       #5de8b0;
 }
-html[data-theme="light"] body { background: var(--c-base); }
-html[data-theme="light"] .modal-overlay { background: rgba(0,0,0,0.45); }
-html[data-theme="light"] #md-textarea  { color: var(--c-code); }
+html[data-theme="dark"] .modal-overlay { background: rgba(0,0,0,0.75); }
+html[data-theme="dark"] #btn-split { border-color: rgba(0,216,200,0.45); }
 
 /* ─── MARKDOWN SPLIT BUTTON ──────────────────────────────── */
 #btn-split {
   width: auto;
+  height: 36px;
   padding: 0 12px 0 10px;
   gap: 6px;
-  border: 1.5px solid rgba(0,216,200,0.45);
+  border: 1.5px solid rgba(0,155,142,0.45);
   border-radius: 8px;
   color: var(--c-accent);
   font-family: var(--f-ui);
@@ -502,9 +495,6 @@ html[data-theme="light"] #md-textarea  { color: var(--c-code); }
   color: #000;
 }
 #btn-split.active::after { display: none; }
-html[data-theme="light"] #btn-split {
-  border-color: rgba(0,155,142,0.45);
-}
 </style>
 </head>
 <body>
@@ -524,7 +514,15 @@ html[data-theme="light"] #btn-split {
     <select id="font-picker" onchange="setFont(this.value)" title="Editor font">
       <option value="'Inter', sans-serif">Inter</option>
       <option value="'Merriweather', serif">Merriweather</option>
-      <option value="'JetBrains Mono', monospace">JetBrains Mono</option>
+      <option value="'JetBrains Mono', monospace" selected>JetBrains Mono</option>
+    </select>
+
+    <select id="size-picker" onchange="setFontSize(this.value)" title="Font size">
+      <option value="13px">13</option>
+      <option value="15px">15</option>
+      <option value="16px" selected>16</option>
+      <option value="18px">18</option>
+      <option value="20px">20</option>
     </select>
 
     <button class="nav-btn" id="btn-split" onclick="toggleSplit()" title="Toggle Markdown split (⌘M)">
@@ -535,8 +533,9 @@ html[data-theme="light"] #btn-split {
       <span>Markdown</span>
     </button>
 
-    <button class="nav-btn" id="btn-theme" onclick="toggleTheme()" title="Toggle dark/light mode">
+    <button class="nav-btn" id="btn-theme" onclick="toggleTheme()" title="Toggle light/dark mode">
       <svg id="theme-icon" viewBox="0 0 24 24">
+        <!-- Moon = currently light, click to go dark -->
         <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>
       </svg>
     </button>
@@ -760,20 +759,26 @@ function toggleSplit() {
 }
 
 // ─── THEME ────────────────────────────────────────────────
-let _isDark = true;
+// Light is default (_isDark = false). Clicking toggles to dark.
+let _isDark = false;
 function toggleTheme() {
   _isDark = !_isDark;
   const html = document.documentElement;
   const icon = document.getElementById('theme-icon');
   if (_isDark) {
-    html.removeAttribute('data-theme');
-    // Moon icon
-    icon.innerHTML = '<path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>';
-  } else {
-    html.setAttribute('data-theme', 'light');
-    // Sun icon
+    html.setAttribute('data-theme', 'dark');
+    // Sun icon — click to return to light
     icon.innerHTML = '<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>';
+  } else {
+    html.removeAttribute('data-theme');
+    // Moon icon — click to go dark
+    icon.innerHTML = '<path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>';
   }
+}
+
+// ─── FONT SIZE ────────────────────────────────────────────
+function setFontSize(value) {
+  document.documentElement.style.setProperty('--font-size-editor', value);
 }
 
 function toggleDrawer() { S.drawerOpen ? closeDrawer() : openDrawer(); }
@@ -1285,6 +1290,40 @@ function showModal(title, label, defaultVal, cb) {
     mdPane.style.transition = '';
   });
 })();
+
+// ═══════════════════════════════════════════════════════════
+// BEFORE UNLOAD — prompt to save workspace
+// ═══════════════════════════════════════════════════════════
+// Browsers no longer allow custom messages in beforeunload dialogs.
+// The best we can do is trigger the native "Leave site?" confirmation
+// which gives the user a "Stay on page" option to go back and export.
+// For a richer save prompt we intercept the custom save shortcut and
+// also show a persistent reminder banner when files are open.
+window.addEventListener('beforeunload', e => {
+  if (!S.files.length) return;
+  e.preventDefault();
+  e.returnValue = '';   // required: triggers browser "Leave site?" dialog
+});
+
+function showLeaveWarning() {
+  if (!S.files.length) return;
+  // Show an in-app overlay only when navigating away via code (not browser UI)
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal" onclick="event.stopPropagation()">
+      <div class="modal-title">Export before leaving?</div>
+      <div class="modal-label" style="margin-bottom:16px">Your workspace is in memory only — it will be lost when you close this tab. Export a zip to save your work.</div>
+      <div class="modal-actions">
+        <button class="btn sm ghost" id="_lwc">Dismiss</button>
+        <button class="btn sm primary" id="_lws">Export Workspace</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.querySelector('#_lws').onclick = () => { document.body.removeChild(overlay); exportWorkspace(); };
+  overlay.querySelector('#_lwc').onclick = () => document.body.removeChild(overlay);
+  overlay.onclick = () => document.body.removeChild(overlay);
+}
 
 // ═══════════════════════════════════════════════════════════
 // KEYBOARD SHORTCUTS
