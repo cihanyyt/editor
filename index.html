@@ -617,6 +617,13 @@ const S = {
   drawerOpen: false,
 };
 
+// Register a Blot for <hr> so Quill preserves horizontal rules instead of stripping them
+const BlockEmbed = Quill.import('blots/block/embed');
+class HorizontalRuleBlot extends BlockEmbed {}
+HorizontalRuleBlot.blotName = 'hr';
+HorizontalRuleBlot.tagName  = 'hr';
+Quill.register(HorizontalRuleBlot);
+
 let quill = null;
 let mdSyncTimer = null;
 let isSyncingBack = false;   // prevent quill↔md infinite loop
