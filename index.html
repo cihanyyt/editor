@@ -308,6 +308,8 @@ body.split-active #md-pane { width: 40%; }
 .ql-editor table { border-collapse: collapse; margin-bottom: 1em; width: 100%; }
 .ql-editor th, .ql-editor td { border: 1px solid var(--c-border); padding: 6px 12px; text-align: left; }
 .ql-editor th { background: var(--c-raised); font-weight: 600; }
+.ql-editor mark { background: #ffe066; color: #1a1a1a; border-radius: 2px; padding: 0 2px; }
+html[data-theme="dark"] .ql-editor mark { background: #7a6000; color: #ffe8a0; }
 
 /* Dark Quill toolbar */
 .ql-snow .ql-stroke { stroke: var(--c-text2) !important; }
@@ -639,16 +641,50 @@ HorizontalRuleBlot.tagName  = 'hr';
 Quill.register(HorizontalRuleBlot);
 
 // Register a Blot for <table> so Quill preserves tables instead of stripping them.
-// Tables are treated as opaque block embeds (not inline-editable).
-class TableBlot extends BlockEmbed {}
+// create/value store the innerHTML so content survives the clipboard converter.
+class TableBlot extends BlockEmbed {
+  static create(value) {
+    const node = super.create();
+    if (typeof value === 'string') node.innerHTML = value;
+    return node;
+  }
+  static value(node) { return node.innerHTML; }
+}
 TableBlot.blotName = 'table';
 TableBlot.tagName  = 'table';
 Quill.register(TableBlot);
+
+// Register a Blot for <mark> so ==highlight== syntax renders correctly.
+const Inline = Quill.import('blots/inline');
+class MarkBlot extends Inline {}
+MarkBlot.blotName = 'mark';
+MarkBlot.tagName  = 'mark';
+Quill.register(MarkBlot);
 
 let quill = null;
 let mdSyncTimer = null;
 let isSyncingBack = false;   // prevent quill↔md infinite loop
 const TD = new TurndownService({ headingStyle: 'atx', codeBlockStyle: 'fenced' });
+
+// marked extension: ==highlight== → <mark>text</mark>
+marked.use({
+  extensions: [{
+    name: 'highlight',
+    level: 'inline',
+    start(src) { return src.indexOf('=='); },
+    tokenizer(src) {
+      const m = src.match(/^==([^=\n]+)==/);
+      if (m) return { type: 'highlight', raw: m[0], text: m[1] };
+    },
+    renderer(token) { return `<mark>${token.text}</mark>`; },
+  }],
+});
+
+// Turndown rule: <mark> → ==text==
+TD.addRule('highlight', {
+  filter: 'mark',
+  replacement: content => `==${content}==`,
+});
 
 // Custom Turndown rule: convert <table> back to GFM markdown table syntax
 TD.addRule('table', {
@@ -736,7 +772,21 @@ function initQuill(html) {
     },
   });
 
-  if (html) quill.root.innerHTML = html;
+  // Add clipboard matchers so our custom BlockEmbed blots survive
+  // dangerouslyPasteHTML's HTML→Delta conversion.
+  const Delta = Quill.import('delta');
+  quill.clipboard.addMatcher('HR', (_node, _delta) =>
+    new Delta().insert({ hr: true })
+  );
+  quill.clipboard.addMatcher('TABLE', (node, _delta) =>
+    new Delta().insert({ table: node.innerHTML })
+  );
+
+  // Use dangerouslyPasteHTML (HTML→Delta via Quill's clipboard module) instead of
+  // directly assigning innerHTML. This correctly handles blockquotes, links inside
+  // blockquotes, and all registered inline/block formats — avoiding the silent
+  // content loss that Quill's MutationObserver normalization caused with innerHTML.
+  if (html) quill.clipboard.dangerouslyPasteHTML(html);
 
   // Inject font & size pickers into the Quill toolbar, preserving current values
   const toolbar = document.querySelector('.ql-toolbar');
