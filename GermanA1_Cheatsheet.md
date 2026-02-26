@@ -12,17 +12,17 @@ Robert
 ## Intro  
   
 5 mein Name ist Cihan Yesilyurt.  
-8 vielen dank für die Einladung ++==zu==++ deiner ==Party==.  
-5 vielen Dank für ++Ihren++ E-mail.  
-7 vielen Dank für Ihr Interesse ++an unserem++ Hotel.  
-11 vielen Dank für Ihre Anfrage und Ihr Interesse an unserem ++==Unternehmen==++  
+8 vielen dank für die Einladung **==zu==** deiner ==Party==.  
+5 vielen Dank für **Ihren** E-mail.  
+7 vielen Dank für Ihr Interesse **an unserem** Hotel.  
+11 vielen Dank für Ihre Anfrage und Ihr Interesse an unserem **==Unternehmen==**  
   
-Ich werde ++im Juli++ ++nach München++ fahren (und ++==dort==++ Ublaub machen).  
+Ich werde **im Juli** **nach München** fahren (und **==dort==** Ublaub machen).  
 Ich möchte im Juli München besuchen.  
-Ich brauche *++==Information== ==über== ++*(die Kulturprogramm) (in Ihre++r++ ++Stadt++).  
-Ich ++==möchte==++== ++mich++ ++für++== (Ihren/einen DeutschKurs) anmelden.  
-Ich brauche (zwei Doppelzimmer/ Einzelzimmer) (mit Bad und Frühstück) (++für++ drei Nächte)  
-ich habe *++==Interesse an==++* Ihre++m++ ++Sofa++  
+Ich brauche ***==Information== ==über== ***(die Kulturprogramm) (in Ihre**r** **Stadt**).  
+Ich **==möchte==**== **mich** **für**== (Ihren/einen DeutschKurs) anmelden.  
+Ich brauche (zwei Doppelzimmer/ Einzelzimmer) (mit Bad und Frühstück) (**für** drei Nächte)  
+ich habe ***==Interesse an==*** Ihre**m** **Sofa**  
 Leider arbeite ich am Wochenende/Wochentage.  
 ==Vielleicht können wir uns nachste Woche treffen.==  
 Leider muss ich Wochende arbeiten.  
@@ -32,8 +32,8 @@ Leider muss ich Wochende arbeiten.
 ==Welche Sehenwürdigkeiten== gibt es?  
 Haben Sie eine List mit Sehenswürdigkeiten?  
 Was macht man an einem Tag in Düsseldorf?  
-Senden Sie ++mir++ bitte (auch die Hoteladresse).  
-Wie viel kostet eine Nacht in Ihre++m++ ++Hotel++?  
+Senden Sie **mir** bitte (auch die Hoteladresse).  
+Wie viel kostet eine Nacht in Ihre**m** **Hotel**?  
 ==Haben Sie auch== am Samstag ==geöffnet==?  
 Können Sie ==mich== bitte ==vom== Bahnhof abholen?  
 Können Sie ==uns== bitte Informationen ==schicken==?  
