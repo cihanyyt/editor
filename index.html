@@ -615,6 +615,9 @@ html[data-theme="dark"] #btn-split { border-color: rgba(0,216,200,0.45); }
 // STATE
 // ═══════════════════════════════════════════════════════════
 const APP_VERSION = 'V1.1';
+// Markdown files in the repo root to load automatically on startup.
+// Adjust this list to match the .md files alongside index.html.
+const PRELOAD_FILES = ['CLAUDE.md', 'README.md', 'GermanA1_Emails.md'];
 
 const S = {
   folders:    [],
@@ -1492,25 +1495,46 @@ const WELCOME_HTML = `<h1>Welcome to editorapp</h1>
 `;
 
 function init() {
-  const welcome = {
-    id: uid(), name: 'welcome.md', folderId: null,
-    htmlContent: WELCOME_HTML, lastModified: Date.now(),
-  };
-  S.files.push(welcome);
-  renderTree();
-  openFile(welcome.id);
+  const fetches = PRELOAD_FILES.map(name =>
+    fetch(name)
+      .then(r => r.ok ? r.text() : Promise.reject())
+      .then(md => ({ name, md }))
+      .catch(() => null)
+  );
 
-  if (window.innerWidth > 1200) {
-    // Large desktop: show sidebar + markdown pane for 5 s then collapse
-    openDrawer();
-    toggleSplit();
-    setTimeout(() => {
-      closeDrawer();
-      if (S.splitOpen) toggleSplit();
-    }, 5000);
-  } else if (window.innerWidth > 767) {
-    openDrawer();
-  }
+  Promise.all(fetches).then(results => {
+    const loaded = results.filter(Boolean);
+    if (loaded.length === 0) {
+      // Fallback when files can't be fetched (e.g. file:// protocol)
+      const welcome = {
+        id: uid(), name: 'welcome.md', folderId: null,
+        htmlContent: WELCOME_HTML, lastModified: Date.now(),
+      };
+      S.files.push(welcome);
+      renderTree();
+      openFile(welcome.id);
+    } else {
+      loaded.forEach(({ name, md }) => {
+        const file = { id: uid(), name, folderId: null, htmlContent: mdToHtml(md), lastModified: Date.now() };
+        S.files.push(file);
+        S.openTabs.push(file.id);
+      });
+      renderTree();
+      openFile(S.files[0].id);   // activates first file; tabs already pre-populated
+    }
+
+    if (window.innerWidth > 1200) {
+      // Large desktop: show sidebar + markdown pane for 5 s then collapse
+      openDrawer();
+      toggleSplit();
+      setTimeout(() => {
+        closeDrawer();
+        if (S.splitOpen) toggleSplit();
+      }, 5000);
+    } else if (window.innerWidth > 767) {
+      openDrawer();
+    }
+  });
 }
 
 init();
