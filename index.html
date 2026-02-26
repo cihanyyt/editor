@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>editorapp V1.1</title>
+<title>editorapp V2.0</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://cdnjs.cloudflare.com">
@@ -614,7 +614,7 @@ html[data-theme="dark"] #btn-split { border-color: rgba(0,216,200,0.45); }
 // ═══════════════════════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════════════════════
-const APP_VERSION = 'V1.1';
+const APP_VERSION = 'V2.0';
 // Markdown files in the repo root to load automatically on startup.
 // Adjust this list to match the .md files alongside index.html.
 const PRELOAD_FILES = ['CLAUDE.md', 'README.md', 'GermanA1_Emails.md'];
@@ -1104,7 +1104,7 @@ function updateNav() {
   const nameEl = document.getElementById('nav-name');
   if (f) {
     nameEl.textContent = f.name;
-    document.title = f.name + ' — editorapp';
+    document.title = f.name + ' — editorapp ' + APP_VERSION;
   } else {
     nameEl.innerHTML = 'editorapp <span class="app-ver">' + APP_VERSION + '</span>';
     document.title = 'editorapp ' + APP_VERSION;
