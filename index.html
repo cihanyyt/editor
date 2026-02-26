@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>editorapp V2.0</title>
+<title>editorapp V2.1</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://cdnjs.cloudflare.com">
@@ -305,6 +305,9 @@ body.split-active #md-pane { width: 40%; }
 }
 .ql-editor ul, .ql-editor ol { padding-left: 1.5em; margin-bottom: 0.9em; }
 .ql-editor li { margin-bottom: 0.3em; }
+.ql-editor table { border-collapse: collapse; margin-bottom: 1em; width: 100%; }
+.ql-editor th, .ql-editor td { border: 1px solid var(--c-border); padding: 6px 12px; text-align: left; }
+.ql-editor th { background: var(--c-raised); font-weight: 600; }
 
 /* Dark Quill toolbar */
 .ql-snow .ql-stroke { stroke: var(--c-text2) !important; }
@@ -614,7 +617,7 @@ html[data-theme="dark"] #btn-split { border-color: rgba(0,216,200,0.45); }
 // ═══════════════════════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════════════════════
-const APP_VERSION = 'V2.0';
+const APP_VERSION = 'V2.1';
 // Markdown files in the repo root to load automatically on startup.
 // Adjust this list to match the .md files alongside index.html.
 const PRELOAD_FILES = ['CLAUDE.md', 'README.md', 'GermanA1_Emails.md'];
@@ -635,10 +638,32 @@ HorizontalRuleBlot.blotName = 'hr';
 HorizontalRuleBlot.tagName  = 'hr';
 Quill.register(HorizontalRuleBlot);
 
+// Register a Blot for <table> so Quill preserves tables instead of stripping them.
+// Tables are treated as opaque block embeds (not inline-editable).
+class TableBlot extends BlockEmbed {}
+TableBlot.blotName = 'table';
+TableBlot.tagName  = 'table';
+Quill.register(TableBlot);
+
 let quill = null;
 let mdSyncTimer = null;
 let isSyncingBack = false;   // prevent quill↔md infinite loop
 const TD = new TurndownService({ headingStyle: 'atx', codeBlockStyle: 'fenced' });
+
+// Custom Turndown rule: convert <table> back to GFM markdown table syntax
+TD.addRule('table', {
+  filter: 'table',
+  replacement(_content, node) {
+    const rows = Array.from(node.querySelectorAll('tr'));
+    if (!rows.length) return _content;
+    const cellText = cell => cell.textContent.trim().replace(/\|/g, '\\|');
+    const rowMd    = row  => '| ' + Array.from(row.querySelectorAll('th,td')).map(cellText).join(' | ') + ' |';
+    const header = rowMd(rows[0]);
+    const sep    = '| ' + Array.from(rows[0].querySelectorAll('th,td')).map(() => '---').join(' | ') + ' |';
+    const body   = rows.slice(1).map(rowMd).join('\n');
+    return '\n\n' + header + '\n' + sep + (body ? '\n' + body : '') + '\n\n';
+  },
+});
 
 // ═══════════════════════════════════════════════════════════
 // UTILS
@@ -677,6 +702,13 @@ function sanitizeHtml(html) {
       if (/^(href|src|action|formaction)$/i.test(attr.name) &&
           /^(javascript|data):/i.test(attr.value)) el.removeAttribute(attr.name);
     });
+  });
+  // Quill's BlockquoteBlot is a line blot and cannot have block-level children.
+  // marked.parse() wraps blockquote content in <p> tags, which Quill silently
+  // drops along with their text. Unwrap them so the text survives.
+  doc.querySelectorAll('blockquote p').forEach(p => {
+    while (p.firstChild) p.parentNode.insertBefore(p.firstChild, p);
+    p.parentNode.removeChild(p);
   });
   return doc.body.innerHTML;
 }
