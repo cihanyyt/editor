@@ -729,6 +729,22 @@ function initQuill(html) {
     grp.appendChild(fontSel);
     grp.appendChild(sizeSel);
     toolbar.appendChild(grp);
+
+    const hrGrp = document.createElement('span');
+    hrGrp.className = 'ql-formats';
+    const hrBtn = document.createElement('button');
+    hrBtn.className = 'ql-hr';
+    hrBtn.title = 'Insert horizontal rule';
+    hrBtn.innerHTML = `<svg viewBox="0 0 18 18"><line class="ql-stroke" x1="2" y1="9" x2="16" y2="9" stroke-linecap="round" stroke-width="2"/></svg>`;
+    hrBtn.addEventListener('click', () => {
+      const range = quill.getSelection(true);
+      if (range) {
+        quill.insertEmbed(range.index, 'hr', true, 'user');
+        quill.setSelection(range.index + 1, 0, 'user');
+      }
+    });
+    hrGrp.appendChild(hrBtn);
+    toolbar.appendChild(hrGrp);
   }
 
   quill.on('text-change', (_delta, _old, source) => {
