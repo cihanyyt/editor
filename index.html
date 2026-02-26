@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>editorapp</title>
+<title>editorapp V0.1</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://cdnjs.cloudflare.com">
@@ -100,6 +100,12 @@ html, body {
 }
 #nav-filename .name {
   display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.app-ver {
+  font-size: 10px; font-weight: 500; letter-spacing: 0.04em;
+  color: var(--c-text3); background: var(--c-raised);
+  border: 1px solid var(--c-border); border-radius: 3px;
+  padding: 1px 5px; margin-left: 6px; vertical-align: middle;
 }
 
 .nav-divider { width: 1px; height: 24px; background: var(--c-border); flex-shrink: 0; margin: 0 2px; }
@@ -608,6 +614,8 @@ html[data-theme="dark"] #btn-split { border-color: rgba(0,216,200,0.45); }
 // ═══════════════════════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════════════════════
+const APP_VERSION = 'V0.1';
+
 const S = {
   folders:    [],
   files:      [],
@@ -1090,7 +1098,14 @@ function renderMdTabs() {
 function updateNav() {
   const f = getFile(S.activeTab);
   document.getElementById('nav-path').textContent = f ? folderPath(f.folderId) : '';
-  document.getElementById('nav-name').textContent = f ? f.name : 'editorapp';
+  const nameEl = document.getElementById('nav-name');
+  if (f) {
+    nameEl.textContent = f.name;
+    document.title = f.name + ' — editorapp';
+  } else {
+    nameEl.innerHTML = 'editorapp <span class="app-ver">' + APP_VERSION + '</span>';
+    document.title = 'editorapp ' + APP_VERSION;
+  }
 }
 
 // ═══════════════════════════════════════════════════════════
