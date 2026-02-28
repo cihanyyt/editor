@@ -1380,16 +1380,22 @@ async function connectSync(handle) {
   await _storeHandle(handle);
   updateSyncButton();
 
-  // Import any .md files from the folder that aren't already in the workspace
+  // Import all .md files from the folder; folder content wins over existing workspace files
   const imported = [];
   try {
     for await (const [name, entry] of handle.entries()) {
       if (entry.kind !== 'file' || !name.endsWith('.md')) continue;
-      if (S.files.some(f => f.name === name)) continue;   // skip duplicates
       const md = await (await entry.getFile()).text();
-      const newFile = { id: uid(), name, folderId: null, htmlContent: mdToHtml(md), lastModified: Date.now() };
-      S.files.push(newFile);
-      imported.push(newFile);
+      const existing = S.files.find(f => f.name === name);
+      if (existing) {
+        existing.htmlContent  = mdToHtml(md);
+        existing.lastModified = Date.now();
+        imported.push(existing);
+      } else {
+        const newFile = { id: uid(), name, folderId: null, htmlContent: mdToHtml(md), lastModified: Date.now() };
+        S.files.push(newFile);
+        imported.push(newFile);
+      }
     }
   } catch { /* ignore read errors */ }
 
