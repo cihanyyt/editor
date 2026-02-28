@@ -242,11 +242,39 @@ body.split-active #md-pane { width: 40%; }
   to   { opacity: 1; transform: translateX(0); }
 }
 
-/* ─── MOBILE: full-screen swap ───────────────────────────── */
+/* ─── MOBILE ─────────────────────────────────────────────── */
 @media (max-width: 767px) {
-  body.split-active #md-pane    { width: 100%; }
+  /* Markdown split: full-screen swap */
+  body.split-active #md-pane     { width: 100%; }
   body.split-active #editor-pane { width: 0; flex: 0 0 0; overflow: hidden; }
   body.split-active #split-divider { display: none; }
+
+  /* Default font size for mobile */
+  :root { --font-size-editor: 15px; }
+
+  /* Drawer becomes a fixed overlay so it doesn't crush the editor */
+  #drawer { position: fixed; top: var(--nav-h); left: 0; bottom: 0; height: auto; z-index: 50; }
+  body.drawer-open #drawer { width: min(var(--sb-w), 85vw); }
+
+  /* Mobile backdrop — shown when drawer is open, tap to close */
+  #mobile-backdrop { display: none; }
+  body.drawer-open #mobile-backdrop {
+    display: block; position: fixed; inset: 0; top: var(--nav-h);
+    background: rgba(0,0,0,0.45); z-index: 49;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Hide non-essential navbar items */
+  #font-picker, #size-picker, #btn-wide { display: none; }
+
+  /* Markdown button: icon-only to save space */
+  #btn-split span { display: none; }
+  #btn-split { width: 44px; }
+
+  /* Larger touch targets */
+  .tree-row { min-height: 40px; }
+  .tree-heading-row { min-height: 28px; }
+  .footer-action-btn { height: 44px; }
 }
 
 /* ─── EDITOR AREA ────────────────────────────────────────── */
@@ -375,9 +403,35 @@ body.drawer-open #drawer { width: var(--sb-w); }
 
 #drawer-footer {
   border-top: 1px solid var(--c-border); padding: 10px 12px;
-  display: flex; flex-direction: column; gap: 6px; flex-shrink: 0;
+  flex-shrink: 0;
 }
-.drawer-footer-row { display: flex; gap: 6px; }
+.drawer-footer-actions { display: flex; gap: 8px; }
+.footer-action-wrap { position: relative; flex: 1; }
+.footer-action-btn {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  width: 100%; height: 36px; border-radius: 8px;
+  border: 1px solid var(--c-border); background: var(--c-raised);
+  color: var(--c-text2); font-family: var(--f-mono); font-size: 11px; font-weight: 600;
+  cursor: pointer; transition: all 0.15s; -webkit-tap-highlight-color: transparent;
+}
+.footer-action-btn:hover { border-color: var(--c-border-hi); color: var(--c-text); }
+.footer-action-btn.open { border-color: var(--c-accent); color: var(--c-accent); background: var(--c-accent-dim); }
+.footer-popup {
+  position: absolute; bottom: calc(100% + 6px); left: 0; right: 0;
+  background: var(--c-surface); border: 1px solid var(--c-border);
+  border-radius: 10px; padding: 4px;
+  display: none; flex-direction: column; gap: 1px;
+  z-index: 200; box-shadow: 0 -4px 20px rgba(0,0,0,0.12);
+}
+.footer-popup.open { display: flex; }
+.footer-popup-item {
+  display: flex; align-items: center; gap: 8px;
+  width: 100%; text-align: left; padding: 9px 11px;
+  border: none; background: transparent; border-radius: 7px;
+  font-family: var(--f-mono); font-size: 11px; color: var(--c-text2);
+  cursor: pointer; transition: background 0.1s, color 0.1s;
+}
+.footer-popup-item:hover { background: var(--c-raised); color: var(--c-text); }
 
 /* ─── TREE ITEMS ─────────────────────────────────────────── */
 .tree-row {
@@ -645,12 +699,53 @@ html[data-theme="dark"] .ql-editor mark { background: rgba(255,200,0,0.18); }
       <div id="file-tree"></div>
 
       <div id="drawer-footer">
-        <div class="drawer-footer-row">
-          <button class="btn block" onclick="importSingleFile()" style="flex:1;font-size:11px">⬆ Import .md</button>
-          <button class="btn block" onclick="exportCurrentFile()" style="flex:1;font-size:11px">⬇ Export .md</button>
+        <div class="drawer-footer-actions">
+
+          <!-- Export button + popup -->
+          <div class="footer-action-wrap">
+            <button class="footer-action-btn" id="btn-export" onclick="toggleFooterPopup('export')" title="Export">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              Export
+            </button>
+            <div class="footer-popup" id="popup-export">
+              <button class="footer-popup-item" onclick="exportCurrentFile();closeFooterPopup()">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                Current file (.md)
+              </button>
+              <button class="footer-popup-item" onclick="exportWorkspace();closeFooterPopup()">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
+                Workspace (.zip)
+              </button>
+            </div>
+          </div>
+
+          <!-- Import button + popup -->
+          <div class="footer-action-wrap">
+            <button class="footer-action-btn" id="btn-import" onclick="toggleFooterPopup('import')" title="Import">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+                <polyline points="17 8 12 3 7 8"/>
+                <line x1="12" y1="3" x2="12" y2="15"/>
+              </svg>
+              Import
+            </button>
+            <div class="footer-popup" id="popup-import">
+              <button class="footer-popup-item" onclick="importSingleFile();closeFooterPopup()">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                File (.md)
+              </button>
+              <button class="footer-popup-item" onclick="importWorkspace();closeFooterPopup()">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
+                Workspace (.zip)
+              </button>
+            </div>
+          </div>
+
         </div>
-        <button class="btn block" onclick="exportWorkspace()" style="font-size:11px">⬇ Export Workspace .zip</button>
-        <button class="btn block" onclick="importWorkspace()" style="font-size:11px">⬆ Import Workspace .zip</button>
       </div>
     </div>
 
@@ -687,6 +782,9 @@ html[data-theme="dark"] .ql-editor mark { background: rgba(255,200,0,0.18); }
   </div>
 
 </div>
+
+<!-- Mobile drawer backdrop -->
+<div id="mobile-backdrop"></div>
 
 <!-- Hidden file inputs -->
 <input type="file" id="md-file-input"        accept=".md"  onchange="handleImportMd(event)">
@@ -1176,7 +1274,28 @@ function closeDrawer() {
   document.body.classList.remove('drawer-open');
   document.getElementById('btn-drawer').classList.remove('active');
   document.getElementById('drawer').addEventListener('transitionend', updateCollapseOverlay, { once: true });
+  closeFooterPopup();
 }
+
+// ─── FOOTER POPUPS ────────────────────────────────────────
+function toggleFooterPopup(id) {
+  const other = id === 'export' ? 'import' : 'export';
+  document.getElementById('popup-' + other).classList.remove('open');
+  document.getElementById('btn-' + other).classList.remove('open');
+  const isOpen = document.getElementById('popup-' + id).classList.toggle('open');
+  document.getElementById('btn-' + id).classList.toggle('open', isOpen);
+}
+function closeFooterPopup() {
+  ['export', 'import'].forEach(id => {
+    document.getElementById('popup-' + id)?.classList.remove('open');
+    document.getElementById('btn-' + id)?.classList.remove('open');
+  });
+}
+// Close footer popups and mobile drawer when clicking outside
+document.addEventListener('click', e => {
+  if (!e.target.closest('.footer-action-wrap')) closeFooterPopup();
+});
+document.getElementById('mobile-backdrop').addEventListener('click', closeDrawer);
 
 // ═══════════════════════════════════════════════════════════
 // RENDER TREE
