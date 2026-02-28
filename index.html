@@ -111,18 +111,24 @@ html, body {
 .nav-divider { width: 1px; height: 24px; background: var(--c-border); flex-shrink: 0; margin: 0 2px; }
 
 #font-picker, #size-picker {
-  height: 24px;
+  height: 28px;
   background: transparent; border: 1px solid var(--c-border);
   color: var(--c-text2); font-family: var(--f-ui); font-size: 11px; font-weight: 600;
   padding: 0 6px; border-radius: 5px; cursor: pointer; outline: none;
   transition: border-color 0.15s, color 0.15s;
   -webkit-appearance: none; appearance: none; vertical-align: middle;
+  flex-shrink: 0;
 }
 #font-picker:hover,  #size-picker:hover  { border-color: var(--c-border-hi); color: var(--c-text); }
 #font-picker:focus,  #size-picker:focus  { border-color: var(--c-accent); color: var(--c-text); }
 #font-picker option, #size-picker option { background: var(--c-raised); }
-#font-picker { margin-right: 4px; }
-#size-picker { width: 40px; text-align: center; }
+#font-picker { margin-left: 4px; margin-right: 2px; }
+#size-picker { width: 42px; text-align: center; margin-right: 4px; }
+
+/* ─── WIDE MODE ───────────────────────────────────────────── */
+@media (min-width: 768px) {
+  body.wide-mode .ql-editor { max-width: none; }
+}
 
 /* ─── TAB BAR ────────────────────────────────────────────── */
 #tabbar {
@@ -598,6 +604,26 @@ html[data-theme="dark"] #btn-split { border-color: rgba(0,216,200,0.45); }
       <span>Markdown</span>
     </button>
 
+    <select id="font-picker" title="Editor font" onchange="setFont(this.value)">
+      <option value="'JetBrains Mono', monospace" selected>JetBrains Mono</option>
+      <option value="'Inter', sans-serif">Inter</option>
+      <option value="'Merriweather', serif">Merriweather</option>
+    </select>
+    <select id="size-picker" title="Font size" onchange="setFontSize(this.value)">
+      <option value="13px">13</option>
+      <option value="15px">15</option>
+      <option value="16px" selected>16</option>
+      <option value="18px">18</option>
+      <option value="20px">20</option>
+    </select>
+
+    <button class="nav-btn" id="btn-wide" onclick="toggleWide()" title="Wide view">
+      <svg id="wide-icon" viewBox="0 0 24 24">
+        <!-- Expand arrows = currently compact, click for wide -->
+        <path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3"/>
+      </svg>
+    </button>
+
     <button class="nav-btn" id="btn-theme" onclick="toggleTheme()" title="Toggle light/dark mode">
       <svg id="theme-icon" viewBox="0 0 24 24">
         <!-- Moon = currently light, click to go dark -->
@@ -1011,41 +1037,9 @@ function initQuill(html) {
   // content loss that Quill's MutationObserver normalization caused with innerHTML.
   if (html) quill.clipboard.dangerouslyPasteHTML(html);
 
-  // Inject font & size pickers into the Quill toolbar, preserving current values
+  // Inject HR button into the Quill toolbar
   const toolbar = document.querySelector('.ql-toolbar');
   if (toolbar) {
-    const grp = document.createElement('span');
-    grp.className = 'ql-formats';
-
-    const currentFont = document.documentElement.style.getPropertyValue('--f-editor').trim() || "'JetBrains Mono', monospace";
-    const fontSel = document.createElement('select');
-    fontSel.id = 'font-picker';
-    fontSel.title = 'Editor font';
-    fontSel.onchange = () => setFont(fontSel.value);
-    [["'Inter', sans-serif", 'Inter'], ["'Merriweather', serif", 'Merriweather'], ["'JetBrains Mono', monospace", 'JetBrains Mono']]
-      .forEach(([val, label]) => {
-        const o = document.createElement('option');
-        o.value = val; o.textContent = label;
-        if (val === currentFont) o.selected = true;
-        fontSel.appendChild(o);
-      });
-
-    const currentSize = document.documentElement.style.getPropertyValue('--font-size-editor').trim() || '16px';
-    const sizeSel = document.createElement('select');
-    sizeSel.id = 'size-picker';
-    sizeSel.title = 'Font size';
-    sizeSel.onchange = () => setFontSize(sizeSel.value);
-    ['13px', '15px', '16px', '18px', '20px'].forEach(s => {
-      const o = document.createElement('option');
-      o.value = s; o.textContent = s.replace('px', '');
-      if (s === currentSize) o.selected = true;
-      sizeSel.appendChild(o);
-    });
-
-    grp.appendChild(fontSel);
-    grp.appendChild(sizeSel);
-    toolbar.appendChild(grp);
-
     const hrGrp = document.createElement('span');
     hrGrp.className = 'ql-formats';
     const hrBtn = document.createElement('button');
@@ -1146,6 +1140,24 @@ function toggleSplit() {
   document.body.classList.toggle('split-active', S.splitOpen);
   document.getElementById('btn-split').classList.toggle('active', S.splitOpen);
   if (S.splitOpen) { syncMdPane(); renderMdTabs(); }
+}
+
+// ─── WIDE MODE ────────────────────────────────────────────
+let _isWide = false;
+function toggleWide() {
+  _isWide = !_isWide;
+  document.body.classList.toggle('wide-mode', _isWide);
+  document.getElementById('btn-wide').classList.toggle('active', _isWide);
+  const icon = document.getElementById('wide-icon');
+  if (_isWide) {
+    // Compress arrows — click to go compact
+    icon.innerHTML = '<path d="M8 3v3a2 2 0 01-2 2H3m18 0h-3a2 2 0 01-2-2V3m0 18v-3a2 2 0 012-2h3M3 16h3a2 2 0 012 2v3"/>';
+    document.getElementById('btn-wide').title = 'Compact view';
+  } else {
+    // Expand arrows — click to go wide
+    icon.innerHTML = '<path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3"/>';
+    document.getElementById('btn-wide').title = 'Wide view';
+  }
 }
 
 // ─── THEME ────────────────────────────────────────────────
