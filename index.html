@@ -539,47 +539,24 @@ html[data-theme="dark"] #btn-split { border-color: rgba(0,216,200,0.45); }
 .collapse-btn:hover { opacity: 1 !important; background: var(--c-raised); color: var(--c-text); }
 .collapse-btn.collapsed { opacity: 1 !important; color: var(--c-accent); }
 
-/* ─── OUTLINE PANEL ─────────────────────────────────────── */
-#file-tree { min-height: 120px; }
+/* ─── TREE HEADINGS (inline outline in explorer) ─────────── */
+.tree-heading-row {
+  display: flex; align-items: center; gap: 5px;
+  min-height: 22px; padding-right: 8px;
+  font-size: 10px; font-family: var(--f-mono);
+  color: var(--c-text3); cursor: pointer; user-select: none;
+}
+.tree-heading-row:hover { background: var(--c-raised); color: var(--c-accent); }
+.tree-heading-dot {
+  width: 4px; height: 4px; border-radius: 50%;
+  background: currentColor; flex-shrink: 0;
+}
 
-#tree-outline-divider {
-  height: 4px; background: var(--c-border);
-  flex-shrink: 0; cursor: ns-resize;
-}
-#tree-outline-divider:hover { background: var(--c-accent-dim); }
-
-#outline-section {
-  height: 200px; min-height: 80px; flex-shrink: 0;
-  display: flex; flex-direction: column; overflow: hidden;
-  border-top: 1px solid var(--c-border);
-}
-#outline-header {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 0 8px 0 12px; height: 34px; flex-shrink: 0;
-  border-bottom: 1px solid var(--c-border);
-}
-.outline-title {
-  font-family: var(--f-mono); font-size: 10px; font-weight: 600;
-  text-transform: uppercase; letter-spacing: 0.12em; color: var(--c-text3);
-}
-.outline-actions { display: flex; gap: 2px; }
-#outline-tree { flex: 1; overflow-y: auto; padding: 4px 0; }
-#outline-tree:empty::after {
-  content: 'No headings'; display: block;
-  font-size: 11px; color: var(--c-text3); font-family: var(--f-mono);
-  text-align: center; padding: 16px 0;
-}
-.outline-item {
-  display: flex; align-items: center; gap: 4px;
-  min-height: 26px; padding: 0 8px;
-  font-size: 11px; font-family: var(--f-mono);
-  color: var(--c-text2); cursor: pointer; user-select: none;
-}
-.outline-item:hover { background: var(--c-raised); color: var(--c-text); }
-.outline-item.collapsed-heading { color: var(--c-accent); }
-.outline-chevron { font-size: 8px; width: 12px; flex-shrink: 0; color: var(--c-text3); }
-.outline-chevron.has-content { cursor: pointer; color: var(--c-text2); }
-.outline-chevron.has-content:hover { color: var(--c-accent); }
+/* ─── MARK / HIGHLIGHT ───────────────────────────────────── */
+.ql-editor mark { background: #ffe0661a; color: inherit; border-radius: 2px; padding: 0 2px; }
+html[data-theme="dark"] .ql-editor mark { background: rgba(255,200,0,0.18); }
+.ql-toolbar .ql-mark.ql-active .ql-fill   { fill:   var(--c-accent) !important; }
+.ql-toolbar .ql-mark.ql-active .ql-stroke { stroke: var(--c-accent) !important; }
 </style>
 </head>
 <body>
@@ -652,31 +629,21 @@ html[data-theme="dark"] #btn-split { border-color: rgba(0,216,200,0.45); }
           <button class="icon-btn" title="New Folder" onclick="promptNewFolder(null)">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
           </button>
+          <div class="nav-divider" style="height:16px;margin:0 2px"></div>
+          <button class="icon-btn" title="Collapse all sections" onclick="collapseAll()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="4 14 12 6 20 14"/><polyline points="4 20 12 12 20 20"/>
+            </svg>
+          </button>
+          <button class="icon-btn" title="Expand all sections" onclick="expandAll()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="4 4 12 12 20 4"/><polyline points="4 10 12 18 20 10"/>
+            </svg>
+          </button>
         </div>
       </div>
 
       <div id="file-tree"></div>
-
-      <div id="tree-outline-divider"></div>
-
-      <div id="outline-section">
-        <div id="outline-header">
-          <span class="outline-title">Outline</span>
-          <div class="outline-actions">
-            <button class="icon-btn" title="Collapse all sections" onclick="collapseAll()">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="4 14 12 6 20 14"/><polyline points="4 20 12 12 20 20"/>
-              </svg>
-            </button>
-            <button class="icon-btn" title="Expand all sections" onclick="expandAll()">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="4 4 12 12 20 4"/><polyline points="4 10 12 18 20 10"/>
-              </svg>
-            </button>
-          </div>
-        </div>
-        <div id="outline-tree"></div>
-      </div>
 
       <div id="drawer-footer">
         <div class="drawer-footer-row">
@@ -775,8 +742,9 @@ Quill.register(MarkBlot);
 let quill = null;
 let mdSyncTimer = null;
 let isSyncingBack = false;   // prevent quill↔md infinite loop
-let collapsedHeadings = new WeakSet();
-let outlineSyncTimer  = null;
+let collapsedHeadings  = new WeakSet();
+let outlineSyncTimer   = null;
+let treeExpandedFiles  = new Set();
 const TD = new TurndownService({ headingStyle: 'atx', codeBlockStyle: 'fenced' });
 
 // marked extension: ==highlight== → <mark>text</mark>
@@ -898,7 +866,6 @@ function applyCollapseState() {
     }
   });
   updateCollapseOverlay();
-  renderOutline();
 }
 
 function toggleCollapse(headingEl) {
@@ -956,48 +923,37 @@ function updateCollapseOverlay() {
   });
 }
 
-function scheduleOutlineSync() {
+function scheduleTreeSync() {
   clearTimeout(outlineSyncTimer);
-  outlineSyncTimer = setTimeout(applyCollapseState, 300);
+  outlineSyncTimer = setTimeout(() => { applyCollapseState(); renderTree(); }, 300);
 }
 
-function renderOutline() {
-  const tree = document.getElementById('outline-tree');
-  if (!tree) return;
-  const sections = buildSections();
-  tree.innerHTML = '';
-  if (!sections.length) return;
-  sections.forEach(({ el, level, contentEls }) => {
-    const isCollapsed = collapsedHeadings.has(el);
-    const hasContent  = contentEls.length > 0;
-    const item = document.createElement('div');
-    item.className = 'outline-item' + (isCollapsed ? ' collapsed-heading' : '');
-    item.style.paddingLeft = (8 + (level - 1) * 10) + 'px';
-
-    const chevron = document.createElement('span');
-    chevron.className = 'outline-chevron' + (hasContent ? ' has-content' : '');
-    chevron.textContent = hasContent ? (isCollapsed ? '▶' : '▼') : '\u00A0';
-    if (hasContent) {
-      chevron.addEventListener('click', e => {
-        e.stopPropagation();
-        toggleCollapse(el);
-      });
-    }
-
-    const label = document.createElement('span');
-    label.style.cssText = 'flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
-    label.textContent = el.textContent.trim() || '(untitled)';
-
-    item.appendChild(chevron);
-    item.appendChild(label);
-    item.addEventListener('click', () => {
-      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      el.style.transition = 'background 0.2s';
-      el.style.background = 'var(--c-accent-dim)';
-      setTimeout(() => { el.style.background = ''; el.style.transition = ''; }, 700);
-    });
-    tree.appendChild(item);
+// ── Inline heading helpers ──────────────────────────────────
+function getFileHeadings(file) {
+  if (!file?.htmlContent || file.htmlContent === '<p><br></p>') return [];
+  const doc = new DOMParser().parseFromString(file.htmlContent, 'text/html');
+  const out = [];
+  doc.body.querySelectorAll('h1, h2, h3').forEach(el => {
+    out.push({ level: parseInt(el.tagName[1]), text: el.textContent.trim() });
   });
+  return out;
+}
+
+function toggleTreeExpand(fileId) {
+  if (treeExpandedFiles.has(fileId)) treeExpandedFiles.delete(fileId);
+  else treeExpandedFiles.add(fileId);
+  renderTree();
+}
+
+function scrollToHeading(text) {
+  if (!quill) return;
+  const el = Array.from(quill.root.querySelectorAll('h1, h2, h3'))
+    .find(e => e.textContent.trim() === text);
+  if (!el) return;
+  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  el.style.transition = 'background 0.2s';
+  el.style.background = 'var(--c-accent-dim)';
+  setTimeout(() => { el.style.background = ''; el.style.transition = ''; }, 700);
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1037,11 +993,12 @@ function initQuill(html) {
   // content loss that Quill's MutationObserver normalization caused with innerHTML.
   if (html) quill.clipboard.dangerouslyPasteHTML(html);
 
-  // Inject HR button into the Quill toolbar
+  // Inject HR + Mark buttons into the Quill toolbar
   const toolbar = document.querySelector('.ql-toolbar');
   if (toolbar) {
-    const hrGrp = document.createElement('span');
-    hrGrp.className = 'ql-formats';
+    const extraGrp = document.createElement('span');
+    extraGrp.className = 'ql-formats';
+
     const hrBtn = document.createElement('button');
     hrBtn.className = 'ql-hr';
     hrBtn.title = 'Insert horizontal rule';
@@ -1053,8 +1010,24 @@ function initQuill(html) {
         quill.setSelection(range.index + 1, 0, 'user');
       }
     });
-    hrGrp.appendChild(hrBtn);
-    toolbar.appendChild(hrGrp);
+
+    const markBtn = document.createElement('button');
+    markBtn.className = 'ql-mark';
+    markBtn.title = 'Highlight (==text==)';
+    markBtn.innerHTML = `<svg viewBox="0 0 18 18">
+      <rect x="2" y="13" width="14" height="3" rx="1.5" class="ql-fill"/>
+      <path class="ql-stroke" fill="none" d="M5.5 13L8 4h2l2.5 9"/>
+      <line class="ql-stroke" x1="6.5" y1="8" x2="11.5" y2="8"/>
+    </svg>`;
+    markBtn.addEventListener('click', () => {
+      if (!quill) return;
+      const fmt = quill.getFormat();
+      quill.format('mark', !fmt.mark, 'user');
+    });
+
+    extraGrp.appendChild(hrBtn);
+    extraGrp.appendChild(markBtn);
+    toolbar.appendChild(extraGrp);
   }
 
   // Inject collapse overlay into .ql-container (outside .ql-editor — safe from Quill's normalizer)
@@ -1073,7 +1046,7 @@ function initQuill(html) {
       file.htmlContent  = getCleanHTML();
       file.lastModified = Date.now();
       scheduleMdSync();
-      scheduleOutlineSync();
+      scheduleTreeSync();
     }
   });
 
@@ -1081,7 +1054,7 @@ function initQuill(html) {
   // Always focus so cursor is visible immediately; position 0 for empty files
   quill.focus();
   if (!html) quill.setSelection(0, 0);
-  setTimeout(() => { updateCollapseOverlay(); renderOutline(); }, 0);
+  setTimeout(updateCollapseOverlay, 0);
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1371,20 +1344,57 @@ function renderLevel(container, parentId, depth) {
   });
 
   S.files.filter(f => f.folderId === parentId).forEach(file => {
+    const headings   = getFileHeadings(file);
+    const hasH       = headings.length > 0;
+    const isExpanded = treeExpandedFiles.has(file.id);
+
     const row = document.createElement('div');
     row.className = 'tree-row' + (S.activeTab === file.id ? ' active' : '');
-    row.style.paddingLeft = (indent + 16) + 'px';
+    // Files with headings get a chevron (same indent as folders); without, skip chevron space
+    row.style.paddingLeft = (hasH ? indent : indent + 16) + 'px';
     row.innerHTML = `
+      ${hasH ? `<span class="row-chevron${isExpanded ? ' open' : ''}">▶</span>` : ''}
       <span class="row-icon">📄</span>
       <span class="row-name">${esc(file.name)}</span>
       <div class="row-actions">
         <button class="icon-btn" title="Rename" onclick="event.stopPropagation();promptRenameFile('${file.id}')">✏</button>
         <button class="icon-btn danger" title="Delete" onclick="event.stopPropagation();deleteFile('${file.id}')">✕</button>
       </div>`;
+    if (hasH) {
+      row.querySelector('.row-chevron').addEventListener('click', e => {
+        e.stopPropagation();
+        toggleTreeExpand(file.id);
+      });
+    }
     row.onclick = () => { openFile(file.id); };
     applyDrag(row, 'file', file.id);
     applyRowDrop(row, 'file', file.id, parentId);
     container.appendChild(row);
+
+    // Heading rows — shown when file is expanded
+    if (hasH && isExpanded) {
+      headings.forEach(({ level, text }) => {
+        const hRow = document.createElement('div');
+        hRow.className = 'tree-heading-row';
+        hRow.style.paddingLeft = (indent + 24 + (level - 1) * 8) + 'px';
+        const label = document.createElement('span');
+        label.style.cssText = 'flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
+        label.textContent = text || '(untitled)';
+        const dot = document.createElement('span');
+        dot.className = 'tree-heading-dot';
+        hRow.appendChild(dot);
+        hRow.appendChild(label);
+        hRow.addEventListener('click', () => {
+          if (file.id === S.activeTab) {
+            scrollToHeading(text);
+          } else {
+            openFile(file.id);
+            setTimeout(() => scrollToHeading(text), 200);
+          }
+        });
+        container.appendChild(hRow);
+      });
+    }
   });
 }
 
@@ -1448,6 +1458,7 @@ function openFile(fileId) {
   flushContent();
   if (!S.openTabs.includes(fileId)) S.openTabs.push(fileId);
   S.activeTab = fileId;
+  treeExpandedFiles.add(fileId);
   quill = null;
   initQuill(getFile(fileId)?.htmlContent || '');
   renderTabs(); renderTree(); updateNav();
@@ -1457,6 +1468,7 @@ function switchTab(fileId) {
   if (fileId === S.activeTab) return;
   flushContent();
   S.activeTab = fileId;
+  treeExpandedFiles.add(fileId);
   quill = null;
   initQuill(getFile(fileId)?.htmlContent || '');
   renderTabs(); renderTree(); updateNav();
@@ -1473,7 +1485,6 @@ function closeTab(fileId) {
     initQuill(getFile(S.activeTab)?.htmlContent || '');
   } else {
     showEmptyState();
-    renderOutline();
   }
   renderTabs(); renderTree(); updateNav();
   if (S.splitOpen) syncMdPane();
@@ -1700,35 +1711,6 @@ function showModal(title, label, defaultVal, cb) {
     document.body.style.cursor     = '';
     document.body.style.userSelect = '';
     mdPane.style.transition = '';
-  });
-})();
-
-// ═══════════════════════════════════════════════════════════
-// OUTLINE PANEL RESIZE HANDLE
-// ═══════════════════════════════════════════════════════════
-(function () {
-  const divider = document.getElementById('tree-outline-divider');
-  const outline = document.getElementById('outline-section');
-  let dragging = false, startY, startH;
-  divider.addEventListener('mousedown', e => {
-    if (!document.body.classList.contains('drawer-open')) return;
-    dragging = true;
-    startY = e.clientY;
-    startH = outline.offsetHeight;
-    document.body.style.cursor     = 'ns-resize';
-    document.body.style.userSelect = 'none';
-    e.preventDefault();
-  });
-  document.addEventListener('mousemove', e => {
-    if (!dragging) return;
-    const newH = Math.max(80, Math.min(400, startH + (startY - e.clientY)));
-    outline.style.height = newH + 'px';
-  });
-  document.addEventListener('mouseup', () => {
-    if (!dragging) return;
-    dragging = false;
-    document.body.style.cursor     = '';
-    document.body.style.userSelect = '';
   });
 })();
 
