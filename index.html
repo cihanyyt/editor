@@ -1400,6 +1400,13 @@ async function connectSync(handle) {
   } catch { /* ignore read errors */ }
 
   if (imported.length > 0) {
+    // If the currently active file was overwritten by the import, update quill
+    // with the new content NOW — before openFile() calls flushContent(), which
+    // would otherwise write the stale quill state back over the imported content.
+    const activeImported = imported.find(f => f.id === S.activeTab);
+    if (activeImported && quill) {
+      quill.root.innerHTML = activeImported.htmlContent;
+    }
     renderTree();
     openFile(imported[0].id);
   }
