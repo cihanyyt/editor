@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>editorapp V2.2</title>
+<title>editorapp V3.0</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://cdnjs.cloudflare.com">
@@ -510,6 +510,70 @@ html[data-theme="dark"] #btn-split { border-color: rgba(0,216,200,0.45); }
   color: #000;
 }
 #btn-split.active::after { display: none; }
+
+/* ─── COLLAPSIBLE SECTIONS ──────────────────────────────── */
+.ql-section-hidden { display: none !important; }
+
+#collapse-overlay {
+  position: absolute; left: 0; top: 0; right: 0; bottom: 0;
+  pointer-events: none; z-index: 2; overflow: hidden;
+}
+.collapse-btn {
+  position: absolute; left: 8px;
+  width: 20px; height: 20px;
+  border: none; background: transparent;
+  cursor: pointer; pointer-events: auto;
+  color: var(--c-text3); font-size: 9px;
+  border-radius: 3px;
+  opacity: 0; transition: opacity 0.15s, background 0.15s;
+  display: flex; align-items: center; justify-content: center;
+  transform: translateY(-50%);
+}
+.ql-container:hover .collapse-btn { opacity: 0.4; }
+.collapse-btn:hover { opacity: 1 !important; background: var(--c-raised); color: var(--c-text); }
+.collapse-btn.collapsed { opacity: 1 !important; color: var(--c-accent); }
+
+/* ─── OUTLINE PANEL ─────────────────────────────────────── */
+#file-tree { min-height: 120px; }
+
+#tree-outline-divider {
+  height: 4px; background: var(--c-border);
+  flex-shrink: 0; cursor: ns-resize;
+}
+#tree-outline-divider:hover { background: var(--c-accent-dim); }
+
+#outline-section {
+  height: 200px; min-height: 80px; flex-shrink: 0;
+  display: flex; flex-direction: column; overflow: hidden;
+  border-top: 1px solid var(--c-border);
+}
+#outline-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 8px 0 12px; height: 34px; flex-shrink: 0;
+  border-bottom: 1px solid var(--c-border);
+}
+.outline-title {
+  font-family: var(--f-mono); font-size: 10px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.12em; color: var(--c-text3);
+}
+.outline-actions { display: flex; gap: 2px; }
+#outline-tree { flex: 1; overflow-y: auto; padding: 4px 0; }
+#outline-tree:empty::after {
+  content: 'No headings'; display: block;
+  font-size: 11px; color: var(--c-text3); font-family: var(--f-mono);
+  text-align: center; padding: 16px 0;
+}
+.outline-item {
+  display: flex; align-items: center; gap: 4px;
+  min-height: 26px; padding: 0 8px;
+  font-size: 11px; font-family: var(--f-mono);
+  color: var(--c-text2); cursor: pointer; user-select: none;
+}
+.outline-item:hover { background: var(--c-raised); color: var(--c-text); }
+.outline-item.collapsed-heading { color: var(--c-accent); }
+.outline-chevron { font-size: 8px; width: 12px; flex-shrink: 0; color: var(--c-text3); }
+.outline-chevron.has-content { cursor: pointer; color: var(--c-text2); }
+.outline-chevron.has-content:hover { color: var(--c-accent); }
 </style>
 </head>
 <body>
@@ -567,6 +631,27 @@ html[data-theme="dark"] #btn-split { border-color: rgba(0,216,200,0.45); }
 
       <div id="file-tree"></div>
 
+      <div id="tree-outline-divider"></div>
+
+      <div id="outline-section">
+        <div id="outline-header">
+          <span class="outline-title">Outline</span>
+          <div class="outline-actions">
+            <button class="icon-btn" title="Collapse all sections" onclick="collapseAll()">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="4 14 12 6 20 14"/><polyline points="4 20 12 12 20 20"/>
+              </svg>
+            </button>
+            <button class="icon-btn" title="Expand all sections" onclick="expandAll()">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="4 4 12 12 20 4"/><polyline points="4 10 12 18 20 10"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div id="outline-tree"></div>
+      </div>
+
       <div id="drawer-footer">
         <div class="drawer-footer-row">
           <button class="btn block" onclick="importSingleFile()" style="flex:1;font-size:11px">⬆ Import .md</button>
@@ -619,7 +704,7 @@ html[data-theme="dark"] #btn-split { border-color: rgba(0,216,200,0.45); }
 // ═══════════════════════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════════════════════
-const APP_VERSION = 'V2.2';
+const APP_VERSION = 'V3.0';
 // Markdown files in the repo root to load automatically on startup.
 // Adjust this list to match the .md files alongside index.html.
 const PRELOAD_FILES = ['GermanA1_Emails.md', 'GermanA1_Cheatsheet.md', 'GermanA1_Speaking.md'];
@@ -664,6 +749,8 @@ Quill.register(MarkBlot);
 let quill = null;
 let mdSyncTimer = null;
 let isSyncingBack = false;   // prevent quill↔md infinite loop
+let collapsedHeadings = new WeakSet();
+let outlineSyncTimer  = null;
 const TD = new TurndownService({ headingStyle: 'atx', codeBlockStyle: 'fenced' });
 
 // marked extension: ==highlight== → <mark>text</mark>
@@ -753,9 +840,145 @@ function mdToHtml(md) {
 }
 
 // ═══════════════════════════════════════════════════════════
+// COLLAPSIBLE SECTIONS
+// ═══════════════════════════════════════════════════════════
+function buildSections() {
+  if (!quill) return [];
+  const children = Array.from(quill.root.children);
+  const sections = [];
+  children.forEach((el, i) => {
+    const m = el.tagName?.match(/^H([123])$/i);
+    if (!m) return;
+    const level = parseInt(m[1]);
+    const contentEls = [];
+    for (let j = i + 1; j < children.length; j++) {
+      const nextM = children[j].tagName?.match(/^H([123])$/i);
+      if (nextM && parseInt(nextM[1]) <= level) break;
+      contentEls.push(children[j]);
+    }
+    sections.push({ el, level, contentEls });
+  });
+  return sections;
+}
+
+function applyCollapseState() {
+  if (!quill) return;
+  // Clean slate: remove class from all children first
+  Array.from(quill.root.children).forEach(el => el.classList.remove('ql-section-hidden'));
+  // Re-apply for collapsed headings
+  buildSections().forEach(({ el, contentEls }) => {
+    if (collapsedHeadings.has(el)) {
+      contentEls.forEach(cel => cel.classList.add('ql-section-hidden'));
+    }
+  });
+  updateCollapseOverlay();
+  renderOutline();
+}
+
+function toggleCollapse(headingEl) {
+  if (collapsedHeadings.has(headingEl)) {
+    collapsedHeadings.delete(headingEl);
+  } else {
+    collapsedHeadings.add(headingEl);
+  }
+  applyCollapseState();
+}
+
+function collapseAll() {
+  if (!quill) return;
+  buildSections().forEach(({ el, contentEls }) => {
+    if (contentEls.length > 0) collapsedHeadings.add(el);
+  });
+  applyCollapseState();
+}
+
+function expandAll() {
+  collapsedHeadings = new WeakSet();
+  applyCollapseState();
+}
+
+function getCleanHTML() {
+  if (!quill) return '';
+  const hidden = Array.from(quill.root.querySelectorAll('.ql-section-hidden'));
+  hidden.forEach(el => el.classList.remove('ql-section-hidden'));
+  const html = quill.root.innerHTML;
+  hidden.forEach(el => el.classList.add('ql-section-hidden'));
+  return html;
+}
+
+function updateCollapseOverlay() {
+  const overlay = document.getElementById('collapse-overlay');
+  if (!overlay || !quill) return;
+  overlay.innerHTML = '';
+  const sections = buildSections();
+  if (!sections.length) return;
+  const overlayRect = overlay.getBoundingClientRect();
+  const overlayH    = overlayRect.height;
+  sections.forEach(({ el, contentEls }) => {
+    if (!contentEls.length) return;
+    const rect = el.getBoundingClientRect();
+    const top  = rect.top - overlayRect.top + rect.height / 2;
+    if (top < -20 || top > overlayH + 20) return;
+    const isCollapsed = collapsedHeadings.has(el);
+    const btn = document.createElement('button');
+    btn.className = 'collapse-btn' + (isCollapsed ? ' collapsed' : '');
+    btn.textContent = isCollapsed ? '▶' : '▼';
+    btn.title       = isCollapsed ? 'Expand section' : 'Collapse section';
+    btn.style.top   = top + 'px';
+    btn.addEventListener('click', () => toggleCollapse(el));
+    overlay.appendChild(btn);
+  });
+}
+
+function scheduleOutlineSync() {
+  clearTimeout(outlineSyncTimer);
+  outlineSyncTimer = setTimeout(applyCollapseState, 300);
+}
+
+function renderOutline() {
+  const tree = document.getElementById('outline-tree');
+  if (!tree) return;
+  const sections = buildSections();
+  tree.innerHTML = '';
+  if (!sections.length) return;
+  sections.forEach(({ el, level, contentEls }) => {
+    const isCollapsed = collapsedHeadings.has(el);
+    const hasContent  = contentEls.length > 0;
+    const item = document.createElement('div');
+    item.className = 'outline-item' + (isCollapsed ? ' collapsed-heading' : '');
+    item.style.paddingLeft = (8 + (level - 1) * 10) + 'px';
+
+    const chevron = document.createElement('span');
+    chevron.className = 'outline-chevron' + (hasContent ? ' has-content' : '');
+    chevron.textContent = hasContent ? (isCollapsed ? '▶' : '▼') : '\u00A0';
+    if (hasContent) {
+      chevron.addEventListener('click', e => {
+        e.stopPropagation();
+        toggleCollapse(el);
+      });
+    }
+
+    const label = document.createElement('span');
+    label.style.cssText = 'flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+    label.textContent = el.textContent.trim() || '(untitled)';
+
+    item.appendChild(chevron);
+    item.appendChild(label);
+    item.addEventListener('click', () => {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      el.style.transition = 'background 0.2s';
+      el.style.background = 'var(--c-accent-dim)';
+      setTimeout(() => { el.style.background = ''; el.style.transition = ''; }, 700);
+    });
+    tree.appendChild(item);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
 // QUILL
 // ═══════════════════════════════════════════════════════════
 function initQuill(html) {
+  collapsedHeadings = new WeakSet();
   const area = document.getElementById('editor-area');
   area.innerHTML = '<div id="quill-wrap"><div id="quill-mount"></div></div>';
 
@@ -840,13 +1063,23 @@ function initQuill(html) {
     toolbar.appendChild(hrGrp);
   }
 
+  // Inject collapse overlay into .ql-container (outside .ql-editor — safe from Quill's normalizer)
+  const qlContainer = document.querySelector('.ql-container');
+  if (qlContainer) {
+    const overlay = document.createElement('div');
+    overlay.id = 'collapse-overlay';
+    qlContainer.appendChild(overlay);
+    quill.root.addEventListener('scroll', () => requestAnimationFrame(updateCollapseOverlay));
+  }
+
   quill.on('text-change', (_delta, _old, source) => {
     if (source !== 'user') return;   // ignore programmatic changes (md→quill sync)
     const file = getFile(S.activeTab);
     if (file) {
-      file.htmlContent  = quill.root.innerHTML;
+      file.htmlContent  = getCleanHTML();
       file.lastModified = Date.now();
       scheduleMdSync();
+      scheduleOutlineSync();
     }
   });
 
@@ -854,6 +1087,7 @@ function initQuill(html) {
   // Always focus so cursor is visible immediately; position 0 for empty files
   quill.focus();
   if (!html) quill.setSelection(0, 0);
+  setTimeout(() => { updateCollapseOverlay(); renderOutline(); }, 0);
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -942,11 +1176,13 @@ function openDrawer() {
   S.drawerOpen = true;
   document.body.classList.add('drawer-open');
   document.getElementById('btn-drawer').classList.add('active');
+  document.getElementById('drawer').addEventListener('transitionend', updateCollapseOverlay, { once: true });
 }
 function closeDrawer() {
   S.drawerOpen = false;
   document.body.classList.remove('drawer-open');
   document.getElementById('btn-drawer').classList.remove('active');
+  document.getElementById('drawer').addEventListener('transitionend', updateCollapseOverlay, { once: true });
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1225,6 +1461,7 @@ function closeTab(fileId) {
     initQuill(getFile(S.activeTab)?.htmlContent || '');
   } else {
     showEmptyState();
+    renderOutline();
   }
   renderTabs(); renderTree(); updateNav();
   if (S.splitOpen) syncMdPane();
@@ -1245,7 +1482,7 @@ function showEmptyState() {
 function flushContent() {
   const file = getFile(S.activeTab);
   if (file && quill) {
-    file.htmlContent  = quill.root.innerHTML;
+    file.htmlContent  = getCleanHTML();
     file.lastModified = Date.now();
   }
 }
@@ -1451,6 +1688,35 @@ function showModal(title, label, defaultVal, cb) {
     document.body.style.cursor     = '';
     document.body.style.userSelect = '';
     mdPane.style.transition = '';
+  });
+})();
+
+// ═══════════════════════════════════════════════════════════
+// OUTLINE PANEL RESIZE HANDLE
+// ═══════════════════════════════════════════════════════════
+(function () {
+  const divider = document.getElementById('tree-outline-divider');
+  const outline = document.getElementById('outline-section');
+  let dragging = false, startY, startH;
+  divider.addEventListener('mousedown', e => {
+    if (!document.body.classList.contains('drawer-open')) return;
+    dragging = true;
+    startY = e.clientY;
+    startH = outline.offsetHeight;
+    document.body.style.cursor     = 'ns-resize';
+    document.body.style.userSelect = 'none';
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    const newH = Math.max(80, Math.min(400, startH + (startY - e.clientY)));
+    outline.style.height = newH + 'px';
+  });
+  document.addEventListener('mouseup', () => {
+    if (!dragging) return;
+    dragging = false;
+    document.body.style.cursor     = '';
+    document.body.style.userSelect = '';
   });
 })();
 
