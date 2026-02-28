@@ -520,6 +520,18 @@ body.drawer-open #drawer { width: var(--sb-w); }
 .modal input:focus { border-color: var(--c-accent); }
 .modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
 
+/* ─── SYNC BUTTON STATES ─────────────────────────────────── */
+/* .active (teal) is inherited from .nav-btn.active — folder linked */
+#btn-sync[data-state="reconnect"] { color: var(--c-accent2); }
+#btn-sync[data-state="reconnect"]::after {
+  content: ''; position: absolute; bottom: 6px; left: 50%; transform: translateX(-50%);
+  width: 16px; height: 2px; background: var(--c-accent2); border-radius: 2px;
+}
+@keyframes sync-spin {
+  to { transform: rotate(360deg); }
+}
+#btn-sync.syncing #sync-icon { animation: sync-spin 1s linear infinite; transform-origin: center; }
+
 /* ─── SCROLLBAR GLOBAL — hidden but scrollable ───────────── */
 * { scrollbar-width: none; }
 *::-webkit-scrollbar { display: none; }
@@ -646,6 +658,14 @@ html[data-theme="dark"] .ql-editor mark { background: rgba(255,200,0,0.18); }
       <option value="18px">18</option>
       <option value="20px">20</option>
     </select>
+
+    <button class="nav-btn" id="btn-sync" onclick="initSync()" title="Link local folder for auto-save" style="display:none">
+      <svg id="sync-icon" viewBox="0 0 24 24">
+        <polyline points="23 4 23 10 17 10"/>
+        <polyline points="1 20 1 14 7 14"/>
+        <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
+      </svg>
+    </button>
 
     <button class="nav-btn" id="btn-wide" onclick="toggleWide()" title="Wide view">
       <svg id="wide-icon" viewBox="0 0 24 24">
@@ -1153,6 +1173,7 @@ function initQuill(html) {
       file.lastModified = Date.now();
       scheduleMdSync();
       scheduleTreeSync();
+      scheduleSyncSave();
     }
   });
 
@@ -1237,6 +1258,194 @@ function toggleWide() {
     icon.innerHTML = '<path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3"/>';
     document.getElementById('btn-wide').title = 'Wide view';
   }
+}
+
+// ═══════════════════════════════════════════════════════════
+// LOCAL FOLDER SYNC  (File System Access API — Chromium only)
+// ═══════════════════════════════════════════════════════════
+let _syncHandle = null;   // FileSystemDirectoryHandle | null
+let _syncActive = false;
+let _syncTimer  = null;
+
+// ── IndexedDB persistence for the directory handle ─────────
+function _syncDb(mode) {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open('editorapp-sync', 1);
+    req.onupgradeneeded = e => e.target.result.createObjectStore('handles');
+    req.onerror = () => reject(req.error);
+    req.onsuccess = e => {
+      const tx = e.target.result.transaction('handles', mode);
+      resolve(tx.objectStore('handles'));
+    };
+  });
+}
+async function _getStoredHandle() {
+  try {
+    const store = await _syncDb('readonly');
+    return new Promise(r => { store.get('dir').onsuccess = e => r(e.target.result); });
+  } catch { return null; }
+}
+async function _storeHandle(handle) {
+  try {
+    const store = await _syncDb('readwrite');
+    store.put(handle, 'dir');
+  } catch { /* ignore */ }
+}
+async function _clearHandle() {
+  try {
+    const store = await _syncDb('readwrite');
+    store.delete('dir');
+  } catch { /* ignore */ }
+}
+
+// ── Button UI ──────────────────────────────────────────────
+function updateSyncButton() {
+  const btn = document.getElementById('btn-sync');
+  if (!btn) return;
+  btn.classList.remove('active', 'syncing');
+  btn.removeAttribute('data-state');
+  if (_syncActive) {
+    btn.classList.add('active');
+    btn.title = 'Auto-save active — click to manage';
+  } else if (_syncHandle) {
+    btn.setAttribute('data-state', 'reconnect');
+    btn.title = 'Re-connect folder to resume auto-save';
+  } else {
+    btn.title = 'Link local folder for auto-save';
+  }
+}
+
+// ── Auto-save the active file to the linked folder ─────────
+async function syncActiveFile() {
+  if (!_syncActive || !_syncHandle) return;
+  const file = getFile(S.activeTab);
+  if (!file) return;
+  const btn = document.getElementById('btn-sync');
+  try {
+    btn?.classList.add('syncing');
+    const fname = file.name.endsWith('.md') ? file.name : file.name + '.md';
+    const fh = await _syncHandle.getFileHandle(fname, { create: true });
+    const writable = await fh.createWritable();
+    await writable.write(htmlToMd(getCleanHTML()));
+    await writable.close();
+  } catch (err) {
+    if (err.name === 'NotAllowedError') {
+      _syncActive = false;
+      updateSyncButton();
+    }
+  } finally {
+    btn?.classList.remove('syncing');
+  }
+}
+function scheduleSyncSave() {
+  if (!_syncActive) return;
+  clearTimeout(_syncTimer);
+  _syncTimer = setTimeout(syncActiveFile, 1200);
+}
+
+// ── Connect / disconnect ───────────────────────────────────
+async function connectSync(handle) {
+  _syncHandle = handle;
+  _syncActive = true;
+  await _storeHandle(handle);
+  updateSyncButton();
+  syncActiveFile();
+}
+async function disconnectSync() {
+  _syncHandle = null;
+  _syncActive = false;
+  clearTimeout(_syncTimer);
+  await _clearHandle();
+  updateSyncButton();
+}
+
+// ── Modals ─────────────────────────────────────────────────
+function initSync() {
+  if (_syncActive) {
+    _showSyncStatusModal();
+  } else if (_syncHandle) {
+    _showSyncReconnectModal();
+  } else {
+    _showSyncIntroModal();
+  }
+}
+
+function _showSyncIntroModal() {
+  const el = document.createElement('div');
+  el.className = 'modal-overlay';
+  el.innerHTML = `
+    <div class="modal" onclick="event.stopPropagation()" style="max-width:380px">
+      <div class="modal-title">Link a Local Folder</div>
+      <p style="font-size:13px;line-height:1.7;color:var(--c-text2);margin-bottom:14px">
+        Save all your documents as real <code style="font-family:var(--f-mono);font-size:12px;background:var(--c-raised);padding:1px 5px;border-radius:3px">.md</code> files directly on your device — no export needed. Changes sync automatically as you type.
+      </p>
+      <p style="font-size:13px;line-height:1.7;color:var(--c-text2);margin-bottom:14px">
+        Your browser will ask you to grant read/write access to a folder of your choice. Nothing leaves your machine.
+      </p>
+      <div style="background:var(--c-raised);border:1px solid var(--c-border);border-radius:8px;padding:10px 12px;margin-bottom:18px">
+        <div class="modal-label" style="margin-bottom:4px">Compatibility</div>
+        <div style="font-size:12px;font-family:var(--f-mono);color:var(--c-text2);line-height:1.6">
+          ✓ Chrome · Edge · Brave · Arc<br>
+          ✗ Firefox · Safari · iOS
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn ghost" onclick="this.closest('.modal-overlay').remove()">Not now</button>
+        <button class="btn primary" id="sync-pick-btn" onclick="
+          this.textContent='Picking…'; this.disabled=true;
+          window.showDirectoryPicker({ mode:'readwrite' })
+            .then(h => { connectSync(h); this.closest('.modal-overlay').remove(); })
+            .catch(() => { this.textContent='Choose Folder →'; this.disabled=false; })
+        ">Choose Folder →</button>
+      </div>
+    </div>`;
+  document.body.appendChild(el);
+  el.addEventListener('click', e => { if (e.target === el) el.remove(); });
+}
+
+function _showSyncStatusModal() {
+  const folderName = _syncHandle?.name ?? 'Unknown folder';
+  const el = document.createElement('div');
+  el.className = 'modal-overlay';
+  el.innerHTML = `
+    <div class="modal" onclick="event.stopPropagation()" style="max-width:340px">
+      <div class="modal-title">Auto-save Active</div>
+      <div class="modal-label">Linked folder</div>
+      <div style="font-family:var(--f-mono);font-size:13px;color:var(--c-accent);margin-bottom:18px;word-break:break-all">📁 ${esc(folderName)}</div>
+      <p style="font-size:13px;line-height:1.7;color:var(--c-text2);margin-bottom:18px">
+        Documents are saved as <code style="font-family:var(--f-mono);font-size:12px;background:var(--c-raised);padding:1px 5px;border-radius:3px">.md</code> files in this folder as you type.
+      </p>
+      <div class="modal-actions">
+        <button class="btn ghost danger" style="color:var(--c-danger)" onclick="disconnectSync();this.closest('.modal-overlay').remove()">Disconnect</button>
+        <button class="btn primary" onclick="this.closest('.modal-overlay').remove()">Done</button>
+      </div>
+    </div>`;
+  document.body.appendChild(el);
+  el.addEventListener('click', e => { if (e.target === el) el.remove(); });
+}
+
+function _showSyncReconnectModal() {
+  const folderName = _syncHandle?.name ?? 'Previous folder';
+  const el = document.createElement('div');
+  el.className = 'modal-overlay';
+  el.innerHTML = `
+    <div class="modal" onclick="event.stopPropagation()" style="max-width:340px">
+      <div class="modal-title">Re-connect Folder</div>
+      <p style="font-size:13px;line-height:1.7;color:var(--c-text2);margin-bottom:14px">
+        Previously linked to <span style="font-family:var(--f-mono);color:var(--c-accent)">📁 ${esc(folderName)}</span>.<br>
+        Grant access again to resume auto-save.
+      </p>
+      <div class="modal-actions">
+        <button class="btn ghost" onclick="disconnectSync();this.closest('.modal-overlay').remove()">Forget folder</button>
+        <button class="btn primary" onclick="
+          _syncHandle.requestPermission({ mode:'readwrite' })
+            .then(p => { if(p==='granted'){ _syncActive=true; updateSyncButton(); syncActiveFile(); } this.closest('.modal-overlay').remove(); })
+            .catch(() => this.closest('.modal-overlay').remove())
+        ">Grant Access →</button>
+      </div>
+    </div>`;
+  document.body.appendChild(el);
+  el.addEventListener('click', e => { if (e.target === el) el.remove(); });
 }
 
 // ─── THEME ────────────────────────────────────────────────
@@ -2002,6 +2211,20 @@ function init() {
       }, 5000);
     } else if (window.innerWidth > 767) {
       openDrawer();
+    }
+
+    // Show sync button on supported browsers; restore previous handle if any
+    if ('showDirectoryPicker' in window) {
+      document.getElementById('btn-sync').style.display = '';
+      _getStoredHandle().then(async handle => {
+        if (!handle) return;
+        const perm = await handle.queryPermission({ mode: 'readwrite' });
+        _syncHandle = handle;
+        if (perm === 'granted') {
+          _syncActive = true;
+        }
+        updateSyncButton();
+      }).catch(() => {});
     }
   });
 }
