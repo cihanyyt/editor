@@ -629,12 +629,12 @@ html[data-theme="dark"] .ql-editor mark { background: rgba(255,200,0,0.18); }
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
           </button>
           <div class="nav-divider" style="height:16px;margin:0 2px"></div>
-          <button class="icon-btn" title="Collapse all files" onclick="collapseAll()">
+          <button class="icon-btn" title="Collapse all" onclick="collapseAll()">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
               <polyline points="4 14 12 6 20 14"/><polyline points="4 20 12 12 20 20"/>
             </svg>
           </button>
-          <button class="icon-btn" title="Expand all files" onclick="expandAll()">
+          <button class="icon-btn" title="Expand all" onclick="expandAll()">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
               <polyline points="4 4 12 12 20 4"/><polyline points="4 10 12 18 20 10"/>
             </svg>
@@ -877,13 +877,25 @@ function toggleCollapse(headingEl) {
 }
 
 function collapseAll() {
+  // Explorer: collapse all file heading nodes
   treeExpandedFiles.clear();
   renderTree();
+  // Editor: collapse all sections in the open document
+  if (quill) {
+    buildSections().forEach(({ el, contentEls }) => {
+      if (contentEls.length > 0) collapsedHeadings.add(el);
+    });
+    applyCollapseState();
+  }
 }
 
 function expandAll() {
+  // Explorer: expand all files that have headings
   S.files.forEach(f => { if (getFileHeadings(f).length > 0) treeExpandedFiles.add(f.id); });
   renderTree();
+  // Editor: expand all sections in the open document
+  collapsedHeadings = new WeakSet();
+  if (quill) applyCollapseState();
 }
 
 function getCleanHTML() {
@@ -1130,22 +1142,22 @@ function toggleWide() {
 }
 
 // ─── THEME ────────────────────────────────────────────────
-// Light is default (_isDark = false). Clicking toggles to dark.
-let _isDark = false;
-function toggleTheme() {
-  _isDark = !_isDark;
-  const html = document.documentElement;
+// Follows OS preference; falls back to dark if undetectable.
+let _isDark = window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? true;
+function applyTheme() {
   const icon = document.getElementById('theme-icon');
   if (_isDark) {
-    html.setAttribute('data-theme', 'dark');
+    document.documentElement.setAttribute('data-theme', 'dark');
     // Sun icon — click to return to light
     icon.innerHTML = '<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>';
   } else {
-    html.removeAttribute('data-theme');
+    document.documentElement.removeAttribute('data-theme');
     // Moon icon — click to go dark
     icon.innerHTML = '<path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>';
   }
 }
+function toggleTheme() { _isDark = !_isDark; applyTheme(); }
+applyTheme();   // apply on load before first paint
 
 // ─── FONT SIZE ────────────────────────────────────────────
 function setFontSize(value) {
