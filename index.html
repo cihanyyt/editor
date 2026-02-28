@@ -1263,9 +1263,10 @@ function toggleWide() {
 // ═══════════════════════════════════════════════════════════
 // LOCAL FOLDER SYNC  (File System Access API — Chromium only)
 // ═══════════════════════════════════════════════════════════
-let _syncHandle = null;   // FileSystemDirectoryHandle | null
-let _syncActive = false;
-let _syncTimer  = null;
+let _syncHandle     = null;   // FileSystemDirectoryHandle | null
+let _syncActive     = false;
+let _syncTimer      = null;
+let _syncIntervalId = null;
 
 // ── IndexedDB persistence for the directory handle ─────────
 function _syncDb(mode) {
@@ -1343,15 +1344,48 @@ function scheduleSyncSave() {
   _syncTimer = setTimeout(syncActiveFile, 1200);
 }
 
+// ── Save every file in the workspace to the linked folder ──
+async function syncAllFiles() {
+  if (!_syncActive || !_syncHandle) return;
+  const btn = document.getElementById('btn-sync');
+  flushContent();   // flush active quill state into file.htmlContent
+  try {
+    btn?.classList.add('syncing');
+    for (const file of S.files) {
+      const fname = file.name.endsWith('.md') ? file.name : file.name + '.md';
+      const content = file.id === S.activeTab && quill
+        ? htmlToMd(getCleanHTML())
+        : htmlToMd(file.htmlContent || '');
+      const fh = await _syncHandle.getFileHandle(fname, { create: true });
+      const writable = await fh.createWritable();
+      await writable.write(content);
+      await writable.close();
+    }
+  } catch (err) {
+    if (err.name === 'NotAllowedError') {
+      _syncActive = false;
+      clearInterval(_syncIntervalId);
+      _syncIntervalId = null;
+      updateSyncButton();
+    }
+  } finally {
+    btn?.classList.remove('syncing');
+  }
+}
+
 // ── Connect / disconnect ───────────────────────────────────
 async function connectSync(handle) {
   _syncHandle = handle;
   _syncActive = true;
   await _storeHandle(handle);
   updateSyncButton();
-  syncActiveFile();
+  await syncAllFiles();   // write every file immediately on connect
+  clearInterval(_syncIntervalId);
+  _syncIntervalId = setInterval(syncAllFiles, 60000);   // then every 60 s
 }
 async function disconnectSync() {
+  clearInterval(_syncIntervalId);
+  _syncIntervalId = null;
   _syncHandle = null;
   _syncActive = false;
   clearTimeout(_syncTimer);
@@ -1439,7 +1473,7 @@ function _showSyncReconnectModal() {
         <button class="btn ghost" onclick="disconnectSync();this.closest('.modal-overlay').remove()">Forget folder</button>
         <button class="btn primary" onclick="
           _syncHandle.requestPermission({ mode:'readwrite' })
-            .then(p => { if(p==='granted'){ _syncActive=true; updateSyncButton(); syncActiveFile(); } this.closest('.modal-overlay').remove(); })
+            .then(p => { if(p==='granted'){ _syncActive=true; updateSyncButton(); syncAllFiles(); clearInterval(_syncIntervalId); _syncIntervalId=setInterval(syncAllFiles,60000); } this.closest('.modal-overlay').remove(); })
             .catch(() => this.closest('.modal-overlay').remove())
         ">Grant Access →</button>
       </div>
@@ -2064,6 +2098,14 @@ window.addEventListener('beforeunload', e => {
   e.returnValue = '';   // required: triggers browser "Leave site?" dialog
 });
 
+// Save all files to the linked folder when the tab is hidden or the page unloads.
+// visibilitychange fires when the user switches tabs, minimizes, or closes the window;
+// pagehide fires on iOS and as a last-resort fallback. Both are best-effort async.
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) syncAllFiles();
+});
+window.addEventListener('pagehide', () => { syncAllFiles(); });
+
 function showLeaveWarning() {
   if (!S.files.length) return;
   // Show an in-app overlay only when navigating away via code (not browser UI)
@@ -2222,6 +2264,8 @@ function init() {
         _syncHandle = handle;
         if (perm === 'granted') {
           _syncActive = true;
+          clearInterval(_syncIntervalId);
+          _syncIntervalId = setInterval(syncAllFiles, 60000);
         }
         updateSyncButton();
       }).catch(() => {});
