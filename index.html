@@ -202,8 +202,8 @@ body.split-active #md-pane { width: 40%; }
 }
 #md-textarea {
   flex: 1; width: 100%; background: transparent;
-  color: var(--c-code); font-family: var(--f-mono);
-  font-size: 12.5px; line-height: 1.8;
+  color: var(--c-code); font-family: var(--f-editor);
+  font-size: var(--font-size-editor); line-height: 1.8;
   padding: 20px 16px; border: none; outline: none;
   resize: none; overflow-y: auto; tab-size: 2;
 }
@@ -384,7 +384,7 @@ body.drawer-open #drawer { width: var(--sb-w); }
   display: flex; align-items: center; gap: 5px;
   min-height: 34px; padding: 0 8px;
   cursor: pointer; user-select: none;
-  font-size: 12px; font-family: var(--f-mono);
+  font-size: 13px; font-family: var(--f-mono);
   color: var(--c-text2); transition: background 0.1s, color 0.1s;
   position: relative;
 }
@@ -406,7 +406,6 @@ body.drawer-open #drawer { width: var(--sb-w); }
 .tree-children.collapsed { display: none; }
 
 /* Drag & drop */
-.tree-row[draggable=true] { cursor: grab; }
 .tree-row.dragging { opacity: 0.3; pointer-events: none; }
 .tree-row.drop-into {
   background: var(--c-accent-dim) !important;
@@ -543,7 +542,7 @@ html[data-theme="dark"] #btn-split { border-color: rgba(0,216,200,0.45); }
 .tree-heading-row {
   display: flex; align-items: center; gap: 5px;
   min-height: 22px; padding-right: 8px;
-  font-size: 10px; font-family: var(--f-mono);
+  font-size: 12px; font-family: var(--f-mono);
   color: var(--c-text3); cursor: pointer; user-select: none;
 }
 .tree-heading-row:hover { background: var(--c-raised); color: var(--c-accent); }
@@ -630,12 +629,12 @@ html[data-theme="dark"] .ql-editor mark { background: rgba(255,200,0,0.18); }
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
           </button>
           <div class="nav-divider" style="height:16px;margin:0 2px"></div>
-          <button class="icon-btn" title="Collapse all sections" onclick="collapseAll()">
+          <button class="icon-btn" title="Collapse all files" onclick="collapseAll()">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
               <polyline points="4 14 12 6 20 14"/><polyline points="4 20 12 12 20 20"/>
             </svg>
           </button>
-          <button class="icon-btn" title="Expand all sections" onclick="expandAll()">
+          <button class="icon-btn" title="Expand all files" onclick="expandAll()">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
               <polyline points="4 4 12 12 20 4"/><polyline points="4 10 12 18 20 10"/>
             </svg>
@@ -878,16 +877,13 @@ function toggleCollapse(headingEl) {
 }
 
 function collapseAll() {
-  if (!quill) return;
-  buildSections().forEach(({ el, contentEls }) => {
-    if (contentEls.length > 0) collapsedHeadings.add(el);
-  });
-  applyCollapseState();
+  treeExpandedFiles.clear();
+  renderTree();
 }
 
 function expandAll() {
-  collapsedHeadings = new WeakSet();
-  applyCollapseState();
+  S.files.forEach(f => { if (getFileHeadings(f).length > 0) treeExpandedFiles.add(f.id); });
+  renderTree();
 }
 
 function getCleanHTML() {
