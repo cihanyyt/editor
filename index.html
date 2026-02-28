@@ -1379,7 +1379,26 @@ async function connectSync(handle) {
   _syncActive = true;
   await _storeHandle(handle);
   updateSyncButton();
-  await syncAllFiles();   // write every file immediately on connect
+
+  // Import any .md files from the folder that aren't already in the workspace
+  const imported = [];
+  try {
+    for await (const [name, entry] of handle.entries()) {
+      if (entry.kind !== 'file' || !name.endsWith('.md')) continue;
+      if (S.files.some(f => f.name === name)) continue;   // skip duplicates
+      const md = await (await entry.getFile()).text();
+      const newFile = { id: uid(), name, folderId: null, htmlContent: mdToHtml(md), lastModified: Date.now() };
+      S.files.push(newFile);
+      imported.push(newFile);
+    }
+  } catch { /* ignore read errors */ }
+
+  if (imported.length > 0) {
+    renderTree();
+    openFile(imported[0].id);
+  }
+
+  await syncAllFiles();   // write every file to the folder
   clearInterval(_syncIntervalId);
   _syncIntervalId = setInterval(syncAllFiles, 60000);   // then every 60 s
 }
