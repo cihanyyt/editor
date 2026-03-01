@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>editorapp V4.8</title>
+<title>editorapp V4.9</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://cdnjs.cloudflare.com">
@@ -854,7 +854,7 @@ html[data-theme="dark"] .ql-editor mark { background: rgba(255,200,0,0.18); }
 // ═══════════════════════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════════════════════
-const APP_VERSION = 'V4.8';
+const APP_VERSION = 'V4.9';
 // Markdown files in the repo root to load automatically on startup.
 // Adjust this list to match the .md files alongside index.html.
 const PRELOAD_FILES = [];   // no files auto-loaded on startup — terminal welcome shown instead
@@ -1314,6 +1314,7 @@ let _syncIntervalId = null;
 let _syncObserver   = null;   // FileSystemObserver | null
 let _lastSyncTime   = null;   // timestamp of last successful write
 let _syncAgeTimer   = null;   // setInterval that ticks the age label
+let _syncAllRunning = false;  // prevent concurrent syncAllFiles calls
 
 // ── IndexedDB persistence for the directory handle ─────────
 function _syncDb(mode) {
@@ -1405,6 +1406,8 @@ function scheduleSyncSave() {
 // ── Save every file in the workspace to the linked folder ──
 async function syncAllFiles() {
   if (!_syncActive || !_syncHandle) return;
+  if (_syncAllRunning) return;   // skip if a sync is already in flight
+  _syncAllRunning = true;
   const btn = document.getElementById('btn-sync');
   flushContent();   // flush active quill state into file.htmlContent
   try {
@@ -1421,8 +1424,8 @@ async function syncAllFiles() {
     }));
     _lastSyncTime = Date.now();
     _updateSyncAge();
-    // Pull in any new .md files added to the folder externally
-    if (await _importNewFilesFromFolder()) renderTree();
+    // Only scan for new inbound files when the real-time observer is unavailable
+    if (!_syncObserver && await _importNewFilesFromFolder()) renderTree();
   } catch (err) {
     if (err.name === 'NotAllowedError') {
       _syncActive = false;
@@ -1432,6 +1435,7 @@ async function syncAllFiles() {
     }
   } finally {
     btn?.classList.remove('syncing');
+    _syncAllRunning = false;
   }
 }
 
@@ -1459,12 +1463,19 @@ async function connectSync(handle) {
   await _storeHandle(handle);
   updateSyncButton();
 
-  // Import all .md files from the folder; folder content wins over existing workspace files
+  // Files already in the workspace before this connect (e.g. created from Neo empty state).
+  // These need to be written to the folder — collected now before the import loop adds more.
+  const preExistingIds = new Set(S.files.map(f => f.id));
+
+  // Import all .md files from the folder; folder content wins over existing workspace files.
+  // Yield to the browser between files so the UI stays responsive.
   const imported = [];
   try {
     for await (const [name, entry] of handle.entries()) {
       if (entry.kind !== 'file' || !name.endsWith('.md')) continue;
       const md = await (await entry.getFile()).text();
+      // Yield — lets the browser paint/handle input between heavy mdToHtml calls
+      await new Promise(r => setTimeout(r, 0));
       const existing = S.files.find(f => f.name === name);
       if (existing) {
         existing.htmlContent  = mdToHtml(md);
@@ -1496,7 +1507,30 @@ async function connectSync(handle) {
   _syncAgeTimer = setInterval(_updateSyncAge, 1000);
   _updateSyncAge();
 
-  await syncAllFiles();   // write every file to the folder
+  // Write only files that existed before this connect (not the ones just read from disk).
+  // Imported files are already on disk — no point converting them back immediately.
+  const toWrite = S.files.filter(f => preExistingIds.has(f.id));
+  if (toWrite.length > 0) {
+    const btn = document.getElementById('btn-sync');
+    btn?.classList.add('syncing');
+    flushContent();
+    try {
+      await Promise.all(toWrite.map(async file => {
+        const fname = file.name.endsWith('.md') ? file.name : file.name + '.md';
+        const content = file.id === S.activeTab && quill
+          ? htmlToMd(getCleanHTML())
+          : htmlToMd(file.htmlContent || '');
+        const fh = await _syncHandle.getFileHandle(fname, { create: true });
+        const writable = await fh.createWritable();
+        await writable.write(content);
+        await writable.close();
+      }));
+      _lastSyncTime = Date.now();
+    } finally {
+      btn?.classList.remove('syncing');
+    }
+  }
+
   clearInterval(_syncIntervalId);
   _syncIntervalId = setInterval(syncAllFiles, 60000);   // polling fallback every 60 s
 
@@ -1537,6 +1571,7 @@ async function disconnectSync() {
   if (_syncObserver) { _syncObserver.disconnect(); _syncObserver = null; }
   _syncHandle = null;
   _syncActive = false;
+  _syncAllRunning = false;
   clearTimeout(_syncTimer);
   const ageEl = document.getElementById('sync-age');
   if (ageEl) ageEl.textContent = '';
@@ -2441,7 +2476,17 @@ function showChangelog() {
 
 const CHANGELOG = [
   {
-    ver: 'V4.8', label: 'Current',
+    ver: 'V4.9', label: 'Current',
+    items: [
+      'Fix sync freezes: imported files no longer written back to disk immediately on connect.',
+      'Yield between file imports so the UI stays responsive during large folder scans.',
+      'Concurrency guard on syncAllFiles prevents overlapping write operations.',
+      'Inbound file scan skipped during 60s poll when FileSystemObserver is active.',
+      'Stale _syncAllRunning flag reset on disconnect.',
+    ],
+  },
+  {
+    ver: 'V4.8', label: 'Privacy & UI',
     items: [
       'Privacy mode: eye button in navbar overlays a screensaver hiding all content.',
       'Click or press any key to reveal; active state highlighted on nav button.',
