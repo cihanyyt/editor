@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>editorapp V4.5</title>
+<title>editorapp V4.6</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://cdnjs.cloudflare.com">
@@ -835,7 +835,7 @@ html[data-theme="dark"] .ql-editor mark { background: rgba(255,200,0,0.18); }
 // ═══════════════════════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════════════════════
-const APP_VERSION = 'V4.5';
+const APP_VERSION = 'V4.6';
 // Markdown files in the repo root to load automatically on startup.
 // Adjust this list to match the .md files alongside index.html.
 const PRELOAD_FILES = [];   // no files auto-loaded on startup — terminal welcome shown instead
@@ -2352,7 +2352,13 @@ function showChangelog() {
 
 const CHANGELOG = [
   {
-    ver: 'V4.5', label: 'Current',
+    ver: 'V4.6', label: 'Current',
+    items: [
+      'Simplified startup: single wake_up_neo.md file, no crash on load.',
+    ],
+  },
+  {
+    ver: 'V4.5', label: 'Stability',
     items: [
       'Version bump following audit stabilisation round.',
     ],
@@ -2427,55 +2433,16 @@ const CHANGELOG = [
   },
 ];
 
-const STARTUP_FILES = [
-  {
-    name: 'wake_up_neo.md',
-    md: `# wake_up_neo.exe
-
-\`\`\`
-EDITORAPP OS  /  build ${APP_VERSION}
-──────────────────────────────────────────
-  loading reality subsystem ......... OK
-  compiling unwritten docs ........... STILL PENDING
-  measuring technical debt ........... ∞
-  running git blame (last 90 days) ... no comment
-  docs written this sprint ........... FAILED
-──────────────────────────────────────────
-\`\`\`
-
----
-
-**The Matrix has you, Neo.**
-
-You've been staring at a blinking cursor your whole life.
-You just never typed anything after it.
-
-*This is your red pill.* Write something real.
-Or take the blue pill and go back to Confluence.
-Your call, Mr. Anderson. 🐇
-
----
-
-> *"There is no spoon."*
-> — The Matrix, 1999
-> *(There is, however, a Markdown parser.)*
-`,
-  },
-  { name: 'untitled.md', md: '' },
-];
-
 function init() {
   const brand = document.getElementById('nav-brand');
   brand.innerHTML = 'editorapp <span class="app-ver" title="What\'s new">' + APP_VERSION + '</span>';
   brand.querySelector('.app-ver').addEventListener('click', showChangelog);
 
-  STARTUP_FILES.forEach(({ name, md }) => {
-    const file = { id: uid(), name, folderId: null, htmlContent: mdToHtml(md), lastModified: Date.now() };
-    S.files.push(file);
-    S.openTabs.push(file.id);
-  });
+  const startFile = { id: uid(), name: 'wake_up_neo.md', folderId: null, htmlContent: '<p>The Matrix has you, Neo.</p>', lastModified: Date.now() };
+  S.files.push(startFile);
+  S.openTabs.push(startFile.id);
   renderTree();
-  openFile(S.files[0].id);
+  openFile(startFile.id);
 
   if (window.innerWidth > 767) openDrawer();
 
