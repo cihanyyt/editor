@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>editorapp V5.2</title>
+<title>editorapp V5.3</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://cdnjs.cloudflare.com">
@@ -716,11 +716,6 @@ html[data-theme="dark"] .ql-editor mark { background: rgba(255,200,0,0.18); }
       </svg>
     </button>
 
-    <div class="nav-divider"></div>
-
-    <button class="nav-btn" id="btn-save" onclick="saveFile()" title="Save (⌘S)">
-      <svg viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-    </button>
   </nav>
 
   <!-- ── MAIN AREA: DRAWER + CONTENT SIDE BY SIDE ── -->
@@ -862,7 +857,7 @@ html[data-theme="dark"] .ql-editor mark { background: rgba(255,200,0,0.18); }
 // ═══════════════════════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════════════════════
-const APP_VERSION = 'V5.2';
+const APP_VERSION = 'V5.3';
 // Markdown files in the repo root to load automatically on startup.
 // Adjust this list to match the .md files alongside index.html.
 const PRELOAD_FILES = [];   // no files auto-loaded on startup — terminal welcome shown instead
@@ -1382,7 +1377,7 @@ function updateSyncButton() {
   btn.removeAttribute('data-state');
   if (_syncActive) {
     btn.classList.add('active');
-    btn.title = 'Auto-save active — click to manage';
+    btn.title = 'Sync now';
   } else if (_syncHandle) {
     btn.setAttribute('data-state', 'reconnect');
     btn.title = 'Re-connect folder to resume auto-save';
@@ -1587,7 +1582,7 @@ async function disconnectSync() {
 // ── Modals ─────────────────────────────────────────────────
 function initSync() {
   if (_syncActive) {
-    _showSyncStatusModal();
+    syncAllFiles();
   } else if (_syncHandle) {
     _showSyncReconnectModal();
   } else {
@@ -2164,16 +2159,6 @@ function flushContent() {
   }
 }
 
-// ═══════════════════════════════════════════════════════════
-// SAVE
-// ═══════════════════════════════════════════════════════════
-function saveFile() {
-  flushContent();
-  const btn  = document.getElementById('btn-save');
-  const prev = btn.style.color;
-  btn.style.color = 'var(--c-accent)';
-  setTimeout(() => btn.style.color = prev || '', 1200);
-}
 
 // ═══════════════════════════════════════════════════════════
 // CRUD — FILES & FOLDERS
@@ -2416,7 +2401,6 @@ function showLeaveWarning() {
 document.addEventListener('keydown', e => {
   if (document.querySelector('.modal-overlay')) return;
   const mod = e.ctrlKey || e.metaKey;
-  if (mod && e.key === 's') { e.preventDefault(); saveFile(); }
   if (mod && e.key === 'e') { e.preventDefault(); exportCurrentFile(); }
   if (mod && e.key === 'm') { e.preventDefault(); toggleSplit(); }
   if (mod && e.key === 'w') { e.preventDefault(); if (S.activeTab) closeTab(S.activeTab); }
@@ -2501,7 +2485,14 @@ function showChangelog() {
 
 const CHANGELOG = [
   {
-    ver: 'V5.2', label: 'Current',
+    ver: 'V5.3', label: 'Current',
+    items: [
+      'Save button removed — content lives in memory and exports handle persistence.',
+      'Sync button now triggers an immediate manual sync when a folder is linked.',
+    ],
+  },
+  {
+    ver: 'V5.2', label: 'Explorer sort',
     items: [
       'Explorer sort: Az button sorts files and folders alphabetically; clock button sorts by last edit.',
       'Clicking the active sort button resets to manual (drag-and-drop) order.',
