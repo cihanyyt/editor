@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>editorapp V5.4</title>
+<title>editorapp V5.5</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://cdnjs.cloudflare.com">
@@ -107,6 +107,8 @@ html, body {
 #nav-brand .app-ver:hover { border-color: var(--c-accent); color: var(--c-accent); }
 
 .nav-divider { width: 1px; height: 24px; background: var(--c-border); flex-shrink: 0; margin: 0 2px; }
+
+#nav-actions { display: flex; align-items: center; flex-shrink: 0; }
 
 #font-picker, #size-picker {
   height: 28px;
@@ -268,6 +270,15 @@ body.split-active #md-pane { width: 40%; }
   /* Markdown button: icon-only to save space */
   #btn-split span { display: none; }
   #btn-split { width: 44px; }
+
+  /* Brand: pull out of absolute centering, sit right of the hamburger */
+  #nav-brand {
+    position: static; left: auto; transform: none;
+    margin-left: auto; flex-shrink: 0; font-size: 12px;
+  }
+
+  /* Icon strip: show 2 icons (88px), rest swipe-accessible */
+  #nav-actions { overflow-x: auto; max-width: calc(2 * 44px); }
 
   /* Larger touch targets */
   .tree-row { min-height: 40px; }
@@ -670,53 +681,53 @@ html[data-theme="dark"] .ql-editor mark { background: rgba(255,200,0,0.18); }
 
     <div id="nav-brand"></div>
 
-    <button class="nav-btn" id="btn-split" onclick="toggleSplit()" title="Toggle Markdown split (⌘M)">
-      <svg viewBox="0 0 24 24">
-        <rect x="2"  y="3" width="9" height="18" rx="1.5"/>
-        <rect x="13" y="3" width="9" height="18" rx="1.5"/>
-      </svg>
-      <span>Markdown</span>
-    </button>
+    <div id="nav-actions">
+      <button class="nav-btn" id="btn-split" onclick="toggleSplit()" title="Toggle Markdown split (⌘M)">
+        <svg viewBox="0 0 24 24">
+          <rect x="2"  y="3" width="9" height="18" rx="1.5"/>
+          <rect x="13" y="3" width="9" height="18" rx="1.5"/>
+        </svg>
+        <span>Markdown</span>
+      </button>
 
-    <select id="font-picker" title="Editor font" onchange="setFont(this.value)">
-      <option value="'JetBrains Mono', monospace" selected>JetBrains Mono</option>
-      <option value="'Inter', sans-serif">Inter</option>
-      <option value="'Merriweather', serif">Merriweather</option>
-    </select>
-    <select id="size-picker" title="Font size" onchange="setFontSize(this.value)">
-      <option value="13px">13</option>
-      <option value="15px">15</option>
-      <option value="16px" selected>16</option>
-      <option value="18px">18</option>
-      <option value="20px">20</option>
-    </select>
+      <select id="font-picker" title="Editor font" onchange="setFont(this.value)">
+        <option value="'JetBrains Mono', monospace" selected>JetBrains Mono</option>
+        <option value="'Inter', sans-serif">Inter</option>
+        <option value="'Merriweather', serif">Merriweather</option>
+      </select>
+      <select id="size-picker" title="Font size" onchange="setFontSize(this.value)">
+        <option value="13px">13</option>
+        <option value="15px">15</option>
+        <option value="16px" selected>16</option>
+        <option value="18px">18</option>
+        <option value="20px">20</option>
+      </select>
 
-    <button class="nav-btn" id="btn-sync" onclick="initSync()" title="Link local folder for auto-save" style="display:none">
-      <svg id="sync-icon" viewBox="0 0 24 24">
-        <polyline points="23 4 23 10 17 10"/>
-        <polyline points="1 20 1 14 7 14"/>
-        <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
-      </svg>
-      <span id="sync-age"></span>
-    </button>
+      <button class="nav-btn" id="btn-sync" onclick="initSync()" title="Link local folder for auto-save" style="display:none">
+        <svg id="sync-icon" viewBox="0 0 24 24">
+          <polyline points="23 4 23 10 17 10"/>
+          <polyline points="1 20 1 14 7 14"/>
+          <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
+        </svg>
+        <span id="sync-age"></span>
+      </button>
 
-    <button class="nav-btn" id="btn-wide" onclick="toggleWide()" title="Wide view">
-      <svg id="wide-icon" viewBox="0 0 24 24">
-        <!-- Expand arrows = currently compact, click for wide -->
-        <path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3"/>
-      </svg>
-    </button>
+      <button class="nav-btn" id="btn-wide" onclick="toggleWide()" title="Wide view">
+        <svg id="wide-icon" viewBox="0 0 24 24">
+          <path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3"/>
+        </svg>
+      </button>
 
-    <button class="nav-btn" id="btn-privacy" onclick="togglePrivacy()" title="Privacy mode — hide content">
-      <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-    </button>
+      <button class="nav-btn" id="btn-privacy" onclick="togglePrivacy()" title="Privacy mode — hide content">
+        <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+      </button>
 
-    <button class="nav-btn" id="btn-theme" onclick="toggleTheme()" title="Toggle light/dark mode">
-      <svg id="theme-icon" viewBox="0 0 24 24">
-        <!-- Moon = currently light, click to go dark -->
-        <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>
-      </svg>
-    </button>
+      <button class="nav-btn" id="btn-theme" onclick="toggleTheme()" title="Toggle light/dark mode">
+        <svg id="theme-icon" viewBox="0 0 24 24">
+          <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>
+        </svg>
+      </button>
+    </div>
 
   </nav>
 
@@ -859,7 +870,7 @@ html[data-theme="dark"] .ql-editor mark { background: rgba(255,200,0,0.18); }
 // ═══════════════════════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════════════════════
-const APP_VERSION = 'V5.4';
+const APP_VERSION = 'V5.5';
 // Markdown files in the repo root to load automatically on startup.
 // Adjust this list to match the .md files alongside index.html.
 const PRELOAD_FILES = [];   // no files auto-loaded on startup — terminal welcome shown instead
@@ -2487,7 +2498,14 @@ function showChangelog() {
 
 const CHANGELOG = [
   {
-    ver: 'V5.4', label: 'Current',
+    ver: 'V5.5', label: 'Current',
+    items: [
+      'Mobile navbar: brand text moves right-aligned, no longer clashes with icons.',
+      'Icon strip is now horizontally scrollable — 2 icons visible by default, swipe for more.',
+    ],
+  },
+  {
+    ver: 'V5.4', label: 'Terminal dark theme',
     items: [
       'Dark mode redesigned as a Linux terminal / phosphor green theme.',
       'Near-black background, Matrix green accent, green-tinted text throughout.',
