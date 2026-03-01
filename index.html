@@ -522,6 +522,7 @@ body.drawer-open #drawer { width: var(--sb-w); }
 
 /* ─── SYNC BUTTON STATES ─────────────────────────────────── */
 /* .active (teal) is inherited from .nav-btn.active — folder linked */
+#btn-sync { flex-direction: column; gap: 1px; }
 #btn-sync[data-state="reconnect"] { color: var(--c-accent2); }
 #btn-sync[data-state="reconnect"]::after {
   content: ''; position: absolute; bottom: 6px; left: 50%; transform: translateX(-50%);
@@ -531,6 +532,12 @@ body.drawer-open #drawer { width: var(--sb-w); }
   to { transform: rotate(360deg); }
 }
 #btn-sync.syncing #sync-icon { animation: sync-spin 1s linear infinite; transform-origin: center; }
+#sync-age {
+  font-size: 9px; font-family: var(--f-mono); line-height: 1;
+  color: var(--c-accent); opacity: 0; pointer-events: none;
+  transition: opacity 0.2s;
+}
+#btn-sync.active #sync-age { opacity: 1; }
 
 /* ─── SCROLLBAR GLOBAL — hidden but scrollable ───────────── */
 * { scrollbar-width: none; }
@@ -665,6 +672,7 @@ html[data-theme="dark"] .ql-editor mark { background: rgba(255,200,0,0.18); }
         <polyline points="1 20 1 14 7 14"/>
         <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
       </svg>
+      <span id="sync-age"></span>
     </button>
 
     <button class="nav-btn" id="btn-wide" onclick="toggleWide()" title="Wide view">
@@ -1268,6 +1276,8 @@ let _syncActive     = false;
 let _syncTimer      = null;
 let _syncIntervalId = null;
 let _syncObserver   = null;   // FileSystemObserver | null
+let _lastSyncTime   = null;   // timestamp of last successful write
+let _syncAgeTimer   = null;   // setInterval that ticks the age label
 
 // ── IndexedDB persistence for the directory handle ─────────
 function _syncDb(mode) {
@@ -1300,6 +1310,15 @@ async function _clearHandle() {
   } catch { /* ignore */ }
 }
 
+// ── Last-sync age label ────────────────────────────────────
+function _updateSyncAge() {
+  const el = document.getElementById('sync-age');
+  if (!el) return;
+  if (!_lastSyncTime || !_syncActive) { el.textContent = ''; return; }
+  const secs = Math.floor((Date.now() - _lastSyncTime) / 1000);
+  el.textContent = secs < 60 ? secs + 's' : Math.floor(secs / 60) + 'm';
+}
+
 // ── Button UI ──────────────────────────────────────────────
 function updateSyncButton() {
   const btn = document.getElementById('btn-sync');
@@ -1330,6 +1349,8 @@ async function syncActiveFile() {
     const writable = await fh.createWritable();
     await writable.write(htmlToMd(getCleanHTML()));
     await writable.close();
+    _lastSyncTime = Date.now();
+    _updateSyncAge();
   } catch (err) {
     if (err.name === 'NotAllowedError') {
       _syncActive = false;
@@ -1362,6 +1383,8 @@ async function syncAllFiles() {
       await writable.write(content);
       await writable.close();
     }
+    _lastSyncTime = Date.now();
+    _updateSyncAge();
     // Pull in any new .md files added to the folder externally
     if (await _importNewFilesFromFolder()) renderTree();
   } catch (err) {
@@ -1435,6 +1458,10 @@ async function connectSync(handle) {
   clearInterval(_syncIntervalId);
   _syncIntervalId = setInterval(syncAllFiles, 60000);   // polling fallback every 60 s
 
+  // Tick the age label every second
+  clearInterval(_syncAgeTimer);
+  _syncAgeTimer = setInterval(_updateSyncAge, 1000);
+
   // Real-time detection via FileSystemObserver (Chrome 129+)
   if ('FileSystemObserver' in window) {
     if (_syncObserver) _syncObserver.disconnect();
@@ -1466,10 +1493,15 @@ async function connectSync(handle) {
 async function disconnectSync() {
   clearInterval(_syncIntervalId);
   _syncIntervalId = null;
+  clearInterval(_syncAgeTimer);
+  _syncAgeTimer = null;
+  _lastSyncTime = null;
   if (_syncObserver) { _syncObserver.disconnect(); _syncObserver = null; }
   _syncHandle = null;
   _syncActive = false;
   clearTimeout(_syncTimer);
+  const ageEl = document.getElementById('sync-age');
+  if (ageEl) ageEl.textContent = '';
   await _clearHandle();
   updateSyncButton();
 }
