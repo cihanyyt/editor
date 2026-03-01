@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>editorapp V4.2</title>
+<title>editorapp V4.3</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://cdnjs.cloudflare.com">
@@ -822,7 +822,7 @@ html[data-theme="dark"] .ql-editor mark { background: rgba(255,200,0,0.18); }
 // ═══════════════════════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════════════════════
-const APP_VERSION = 'V4.2';
+const APP_VERSION = 'V4.3';
 // Markdown files in the repo root to load automatically on startup.
 // Adjust this list to match the .md files alongside index.html.
 const PRELOAD_FILES = ['GermanA1_Emails.md', 'GermanA1_Cheatsheet.md', 'GermanA1_Speaking.md'];
@@ -1454,13 +1454,15 @@ async function connectSync(handle) {
     openFile(imported[0].id);
   }
 
+  // Start the age counter immediately so it shows 0s → 1s → 2s from the moment sync activates
+  _lastSyncTime = Date.now();
+  clearInterval(_syncAgeTimer);
+  _syncAgeTimer = setInterval(_updateSyncAge, 1000);
+  _updateSyncAge();
+
   await syncAllFiles();   // write every file to the folder
   clearInterval(_syncIntervalId);
   _syncIntervalId = setInterval(syncAllFiles, 60000);   // polling fallback every 60 s
-
-  // Tick the age label every second
-  clearInterval(_syncAgeTimer);
-  _syncAgeTimer = setInterval(_updateSyncAge, 1000);
 
   // Real-time detection via FileSystemObserver (Chrome 129+)
   if ('FileSystemObserver' in window) {
@@ -2374,13 +2376,14 @@ function init() {
       _getStoredHandle().then(async handle => {
         if (!handle) return;
         const perm = await handle.queryPermission({ mode: 'readwrite' });
-        _syncHandle = handle;
         if (perm === 'granted') {
-          _syncActive = true;
-          clearInterval(_syncIntervalId);
-          _syncIntervalId = setInterval(syncAllFiles, 60000);
+          // Re-run the full connect flow: reads folder, sets up observer, starts timers
+          await connectSync(handle);
+        } else {
+          // Permission needs re-prompt — show reconnect button only
+          _syncHandle = handle;
+          updateSyncButton();
         }
-        updateSyncButton();
       }).catch(() => {});
     }
   });
