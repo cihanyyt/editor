@@ -2146,7 +2146,7 @@ function createWonderland() {
   _teardownNeoListeners();
   let file = S.files.find(f => f.name === 'wonderland.md');
   if (!file) {
-    file = { id: uid(), name: 'wonderland.md', folderId: null, htmlContent: '<p>follow the white rabbit</p>', lastModified: Date.now() };
+    file = { id: uid(), name: 'wonderland.md', folderId: null, htmlContent: '<p>The matrix has you...</p><p>Follow the white rabbit...</p><p>Knock knock, Neo...</p>', lastModified: Date.now() };
     S.files.push(file);
   }
   if (!S.openTabs.includes(file.id)) S.openTabs.push(file.id);
