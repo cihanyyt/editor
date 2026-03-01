@@ -1322,7 +1322,8 @@ let _syncIntervalId = null;
 let _syncObserver   = null;   // FileSystemObserver | null
 let _lastSyncTime   = null;   // timestamp of last successful write
 let _syncAgeTimer   = null;   // setInterval that ticks the age label
-let _syncAllRunning = false;  // prevent concurrent syncAllFiles calls
+let _syncAllRunning    = false;  // prevent concurrent syncAllFiles calls
+let _importRunning    = false;  // prevent concurrent _importNewFilesFromFolder calls
 
 // ── IndexedDB persistence for the directory handle ─────────
 function _syncDb(mode) {
@@ -1450,7 +1451,8 @@ async function syncAllFiles() {
 
 // ── Inbound: import new .md files from folder not yet in app ──
 async function _importNewFilesFromFolder() {
-  if (!_syncHandle) return false;
+  if (!_syncHandle || _importRunning) return false;
+  _importRunning = true;
   let didImport = false;
   try {
     for await (const [name, entry] of _syncHandle.entries()) {
@@ -1461,7 +1463,9 @@ async function _importNewFilesFromFolder() {
       S.files.push({ id: uid(), name, folderId: null, htmlContent: '', _srcMd: md, lastModified: Date.now() });
       didImport = true;
     }
-  } catch { /* ignore permission errors */ }
+  } catch { /* ignore permission errors */ } finally {
+    _importRunning = false;
+  }
   return didImport;
 }
 
@@ -1563,6 +1567,7 @@ async function disconnectSync() {
   _syncHandle = null;
   _syncActive = false;
   _syncAllRunning = false;
+  _importRunning = false;
   clearTimeout(_syncTimer);
   const ageEl = document.getElementById('sync-age');
   if (ageEl) ageEl.textContent = '';
