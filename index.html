@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>editorapp V5.0</title>
+<title>editorapp V5.1</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://cdnjs.cloudflare.com">
@@ -854,7 +854,7 @@ html[data-theme="dark"] .ql-editor mark { background: rgba(255,200,0,0.18); }
 // ═══════════════════════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════════════════════
-const APP_VERSION = 'V5.0';
+const APP_VERSION = 'V5.1';
 // Markdown files in the repo root to load automatically on startup.
 // Adjust this list to match the .md files alongside index.html.
 const PRELOAD_FILES = [];   // no files auto-loaded on startup — terminal welcome shown instead
@@ -1433,8 +1433,8 @@ async function syncAllFiles() {
     }));
     _lastSyncTime = Date.now();
     _updateSyncAge();
-    // Only scan for new inbound files when the real-time observer is unavailable
-    if (!_syncObserver && await _importNewFilesFromFolder()) renderTree();
+    // Always scan for new inbound files — FSO is real-time but unreliable; poll is the fallback
+    if (await _importNewFilesFromFolder()) renderTree();
   } catch (err) {
     if (err.name === 'NotAllowedError') {
       _syncActive = false;
@@ -1542,30 +1542,13 @@ async function connectSync(handle) {
   clearInterval(_syncIntervalId);
   _syncIntervalId = setInterval(syncAllFiles, 60000);   // polling fallback every 60 s
 
-  // Real-time detection via FileSystemObserver (Chrome 129+)
+  // Real-time detection via FileSystemObserver (Chrome 129+).
+  // On any folder change, run a full inbound scan — simpler and more reliable
+  // than parsing individual record types whose shape varies across browser versions.
   if ('FileSystemObserver' in window) {
     if (_syncObserver) _syncObserver.disconnect();
-    _syncObserver = new FileSystemObserver(async (records) => {
-      let didImport = false;
-      for (const record of records) {
-        if (record.type === 'unknown') {
-          // Missed events — do a full inbound scan
-          if (await _importNewFilesFromFolder()) didImport = true;
-          continue;
-        }
-        if (record.type === 'appeared' && record.changedHandle?.kind === 'file') {
-          const name = record.changedHandle.name;
-          if (!name.endsWith('.md')) continue;
-          const alreadyExists = S.files.some(f => (f.name.endsWith('.md') ? f.name : f.name + '.md') === name);
-          if (alreadyExists) continue;
-          try {
-            const md = await (await record.changedHandle.getFile()).text();
-            S.files.push({ id: uid(), name, folderId: null, htmlContent: '', _srcMd: md, lastModified: Date.now() });
-            didImport = true;
-          } catch { /* file may have disappeared already */ }
-        }
-      }
-      if (didImport) renderTree();
+    _syncObserver = new FileSystemObserver(async () => {
+      if (await _importNewFilesFromFolder()) renderTree();
     });
     await _syncObserver.observe(handle);
   }
@@ -2487,7 +2470,15 @@ function showChangelog() {
 
 const CHANGELOG = [
   {
-    ver: 'V5.0', label: 'Current',
+    ver: 'V5.1', label: 'Current',
+    items: [
+      'Fix: new files added to synced folder now reliably detected.',
+      '60s poll always scans for new files regardless of FileSystemObserver state.',
+      'FileSystemObserver callback simplified to a full inbound scan on any folder change.',
+    ],
+  },
+  {
+    ver: 'V5.0', label: 'Sync performance',
     items: [
       'Lazy HTML conversion on sync: files are imported as raw markdown and only parsed when opened.',
       'Eliminates all mdToHtml blocking on the main thread during folder connect.',
