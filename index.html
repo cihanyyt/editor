@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>editorapp V5.5</title>
+<title>editorapp V5.6</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://cdnjs.cloudflare.com">
@@ -663,6 +663,11 @@ html[data-theme="dark"] .privacy-terminal { text-shadow: 0 0 14px rgba(0,255,65,
   background: currentColor; flex-shrink: 0;
 }
 
+/* ─── READING MODE ───────────────────────────────────────── */
+body.reading-mode .ql-toolbar { display: none !important; }
+body.reading-mode .ql-editor  { cursor: default; }
+body.reading-mode .ql-container { border-top: 2px solid var(--c-accent) !important; }
+
 /* ─── MARK / HIGHLIGHT ───────────────────────────────────── */
 .ql-editor mark { background: #ffe0661a; color: inherit; border-radius: 2px; padding: 0 2px; }
 html[data-theme="dark"] .ql-editor mark { background: rgba(255,200,0,0.18); }
@@ -682,6 +687,12 @@ html[data-theme="dark"] .ql-editor mark { background: rgba(255,200,0,0.18); }
     <div id="nav-brand"></div>
 
     <div id="nav-actions">
+      <button class="nav-btn" id="btn-read" onclick="toggleReadingMode()" title="Reading mode — lock editor for distraction-free reading">
+        <svg viewBox="0 0 24 24">
+          <path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/>
+          <path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/>
+        </svg>
+      </button>
       <button class="nav-btn" id="btn-split" onclick="toggleSplit()" title="Toggle Markdown split (⌘M)">
         <svg viewBox="0 0 24 24">
           <rect x="2"  y="3" width="9" height="18" rx="1.5"/>
@@ -870,7 +881,7 @@ html[data-theme="dark"] .ql-editor mark { background: rgba(255,200,0,0.18); }
 // ═══════════════════════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════════════════════
-const APP_VERSION = 'V5.5';
+const APP_VERSION = 'V5.6';
 // Markdown files in the repo root to load automatically on startup.
 // Adjust this list to match the .md files alongside index.html.
 const PRELOAD_FILES = [];   // no files auto-loaded on startup — terminal welcome shown instead
@@ -920,6 +931,7 @@ let collapsedHeadings  = new WeakSet();
 let outlineSyncTimer   = null;
 let treeExpandedFiles  = new Set();
 let _treeSort          = 'manual'; // 'manual' | 'alpha' | 'recent'
+let _readingMode       = false;
 const TD = new TurndownService({ headingStyle: 'atx', codeBlockStyle: 'fenced' });
 
 // marked extension: ==highlight== → <mark>text</mark>
@@ -1246,9 +1258,13 @@ function initQuill(html) {
   });
 
   if (S.splitOpen) syncMdPane();
-  // Always focus so cursor is visible immediately; position 0 for empty files
-  quill.focus();
-  if (!html) quill.setSelection(0, 0);
+  if (_readingMode) {
+    quill.enable(false);
+    quill.blur();
+  } else {
+    quill.focus();
+    if (!html) quill.setSelection(0, 0);
+  }
   setTimeout(updateCollapseOverlay, 0);
 }
 
@@ -1699,6 +1715,17 @@ function applyTheme() {
   }
 }
 function toggleTheme() { _isDark = !_isDark; applyTheme(); }
+
+function toggleReadingMode() {
+  _readingMode = !_readingMode;
+  document.body.classList.toggle('reading-mode', _readingMode);
+  document.getElementById('btn-read')?.classList.toggle('active', _readingMode);
+  if (quill) {
+    quill.enable(!_readingMode);
+    if (_readingMode) quill.blur();
+    else { quill.focus(); }
+  }
+}
 applyTheme();   // apply on load before first paint
 
 // ─── FONT SIZE ────────────────────────────────────────────
@@ -2498,7 +2525,15 @@ function showChangelog() {
 
 const CHANGELOG = [
   {
-    ver: 'V5.5', label: 'Current',
+    ver: 'V5.6', label: 'Current',
+    items: [
+      'Reading mode: book icon locks the editor — no accidental edits, no keyboard popup on mobile.',
+      'Toolbar hides in reading mode; a teal top border marks the editor as locked.',
+      'Switching files while in reading mode keeps the lock — toggle once to re-enable editing.',
+    ],
+  },
+  {
+    ver: 'V5.5', label: 'Mobile navbar',
     items: [
       'Mobile navbar: brand text moves right-aligned, no longer clashes with icons.',
       'Icon strip is now horizontally scrollable — 2 icons visible by default, swipe for more.',
