@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>editorapp V5.1</title>
+<title>editorapp V5.2</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://cdnjs.cloudflare.com">
@@ -520,6 +520,7 @@ body.drawer-open #drawer { width: var(--sb-w); }
 }
 .icon-btn:hover { background: var(--c-border); color: var(--c-text); }
 .icon-btn.danger:hover { color: var(--c-danger); background: rgba(240,80,96,0.1); }
+.icon-btn.active { background: var(--c-accent-dim); color: var(--c-accent); }
 
 /* ─── MODAL ──────────────────────────────────────────────── */
 .modal-overlay {
@@ -747,6 +748,13 @@ html[data-theme="dark"] .ql-editor mark { background: rgba(255,200,0,0.18); }
               <polyline points="4 4 12 12 20 4"/><polyline points="4 10 12 18 20 10"/>
             </svg>
           </button>
+          <div class="nav-divider" style="height:16px;margin:0 2px"></div>
+          <button id="btn-sort-alpha" class="icon-btn" title="Sort A→Z (click again to reset)" onclick="setTreeSort('alpha')" style="font-size:10px;font-family:var(--f-mono);font-weight:700;width:26px">Az</button>
+          <button id="btn-sort-recent" class="icon-btn" title="Sort by last edit (click again to reset)" onclick="setTreeSort('recent')">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+            </svg>
+          </button>
         </div>
       </div>
 
@@ -854,7 +862,7 @@ html[data-theme="dark"] .ql-editor mark { background: rgba(255,200,0,0.18); }
 // ═══════════════════════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════════════════════
-const APP_VERSION = 'V5.1';
+const APP_VERSION = 'V5.2';
 // Markdown files in the repo root to load automatically on startup.
 // Adjust this list to match the .md files alongside index.html.
 const PRELOAD_FILES = [];   // no files auto-loaded on startup — terminal welcome shown instead
@@ -903,6 +911,7 @@ let _mdBackTimer   = null;    // debounce timer for md-textarea → quill sync
 let collapsedHeadings  = new WeakSet();
 let outlineSyncTimer   = null;
 let treeExpandedFiles  = new Set();
+let _treeSort          = 'manual'; // 'manual' | 'alpha' | 'recent'
 const TD = new TurndownService({ headingStyle: 'atx', codeBlockStyle: 'fenced' });
 
 // marked extension: ==highlight== → <mark>text</mark>
@@ -1725,6 +1734,19 @@ document.addEventListener('click', e => {
 document.getElementById('mobile-backdrop').addEventListener('click', closeDrawer);
 
 // ═══════════════════════════════════════════════════════════
+// ── Tree sort ────────────────────────────────────────────────
+function setTreeSort(mode) {
+  _treeSort = (_treeSort === mode) ? 'manual' : mode;
+  document.getElementById('btn-sort-alpha')?.classList.toggle('active', _treeSort === 'alpha');
+  document.getElementById('btn-sort-recent')?.classList.toggle('active', _treeSort === 'recent');
+  renderTree();
+}
+function sortItems(arr) {
+  if (_treeSort === 'alpha')  return [...arr].sort((a, b) => a.name.localeCompare(b.name));
+  if (_treeSort === 'recent') return [...arr].sort((a, b) => (b.lastModified || 0) - (a.lastModified || 0));
+  return arr;
+}
+
 // RENDER TREE
 // ═══════════════════════════════════════════════════════════
 function renderTree() {
@@ -1869,7 +1891,7 @@ function moveItem(srcType, srcId, refType, refId, refParentId, above) {
 function renderLevel(container, parentId, depth) {
   const indent = 10 + depth * 14;
 
-  S.folders.filter(f => f.parentId === parentId).forEach(folder => {
+  sortItems(S.folders.filter(f => f.parentId === parentId)).forEach(folder => {
     const wrap = document.createElement('div');
     const row  = document.createElement('div');
     row.className = 'tree-row';
@@ -1885,9 +1907,11 @@ function renderLevel(container, parentId, depth) {
         <button class="icon-btn danger" title="Delete" onclick="event.stopPropagation();deleteFolder('${folder.id}')">✕</button>
       </div>`;
     row.onclick = () => { folder.collapsed = !folder.collapsed; renderTree(); };
-    applyDrag(row, 'folder', folder.id);
-    applyFolderDrop(row, folder.id);
-    applyRowDrop(row, 'folder', folder.id, parentId);
+    if (_treeSort === 'manual') {
+      applyDrag(row, 'folder', folder.id);
+      applyFolderDrop(row, folder.id);
+      applyRowDrop(row, 'folder', folder.id, parentId);
+    }
 
     const kids = document.createElement('div');
     kids.className = 'tree-children' + (folder.collapsed ? ' collapsed' : '');
@@ -1897,7 +1921,7 @@ function renderLevel(container, parentId, depth) {
     renderLevel(kids, folder.id, depth + 1);
   });
 
-  S.files.filter(f => f.folderId === parentId).forEach(file => {
+  sortItems(S.files.filter(f => f.folderId === parentId)).forEach(file => {
     const headings   = getFileHeadings(file);
     const hasH       = headings.length > 0;
     const isExpanded = treeExpandedFiles.has(file.id);
@@ -1921,8 +1945,10 @@ function renderLevel(container, parentId, depth) {
       });
     }
     row.onclick = () => { openFile(file.id); };
-    applyDrag(row, 'file', file.id);
-    applyRowDrop(row, 'file', file.id, parentId);
+    if (_treeSort === 'manual') {
+      applyDrag(row, 'file', file.id);
+      applyRowDrop(row, 'file', file.id, parentId);
+    }
     container.appendChild(row);
 
     // Heading rows — shown when file is expanded
@@ -2475,7 +2501,15 @@ function showChangelog() {
 
 const CHANGELOG = [
   {
-    ver: 'V5.1', label: 'Current',
+    ver: 'V5.2', label: 'Current',
+    items: [
+      'Explorer sort: Az button sorts files and folders alphabetically; clock button sorts by last edit.',
+      'Clicking the active sort button resets to manual (drag-and-drop) order.',
+      'Drag-and-drop reordering is disabled when a sort is active to prevent visual conflicts.',
+    ],
+  },
+  {
+    ver: 'V5.1', label: 'Sync fixes',
     items: [
       'Fix: new files added to synced folder now reliably detected.',
       '60s poll always scans for new files regardless of FileSystemObserver state.',
