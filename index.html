@@ -113,6 +113,11 @@ html, body {
   border: 1px solid var(--c-border); border-radius: 3px;
   padding: 1px 5px; margin-left: 6px; vertical-align: middle;
 }
+#nav-brand .app-ver {
+  cursor: pointer; pointer-events: auto;
+  transition: border-color 0.15s, color 0.15s;
+}
+#nav-brand .app-ver:hover { border-color: var(--c-accent); color: var(--c-accent); }
 
 .nav-divider { width: 1px; height: 24px; background: var(--c-border); flex-shrink: 0; margin: 0 2px; }
 
@@ -2344,9 +2349,123 @@ const WELCOME_HTML = `<h1>Welcome to editorapp</h1>
 <p>editorapp is open source and MIT licensed. Contributions, issues, and forks are welcome. Built with <a href="https://quilljs.com">Quill</a>, <a href="https://github.com/mixmark-io/turndown">Turndown</a>, <a href="https://marked.js.org">Marked</a>, and <a href="https://stuk.github.io/jszip">JSZip</a> — all loaded from CDN, no <code>npm install</code> required.</p>
 `;
 
+// ═══════════════════════════════════════════════════════════
+// CHANGELOG
+// ═══════════════════════════════════════════════════════════
+function showChangelog() {
+  const el = document.createElement('div');
+  el.className = 'modal-overlay';
+  el.innerHTML = `
+    <div class="modal" onclick="event.stopPropagation()" style="max-width:420px;max-height:80vh;display:flex;flex-direction:column">
+      <div class="modal-title" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0">
+        <span>Release Notes</span>
+        <span class="app-ver" style="margin-left:0">${APP_VERSION}</span>
+      </div>
+      <div style="overflow-y:auto;flex:1;margin-top:16px;padding-right:4px">
+        ${CHANGELOG.map(({ ver, label, items }) => `
+          <div style="margin-bottom:18px">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+              <span style="font-family:var(--f-mono);font-size:11px;font-weight:700;color:var(--c-accent)">${esc(ver)}</span>
+              <span style="font-size:11px;color:var(--c-text3);font-family:var(--f-ui)">${esc(label)}</span>
+            </div>
+            <ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:5px">
+              ${items.map(item => `
+                <li style="display:flex;gap:8px;font-size:12px;color:var(--c-text2);line-height:1.5">
+                  <span style="color:var(--c-accent);flex-shrink:0;margin-top:1px">·</span>
+                  <span>${item}</span>
+                </li>`).join('')}
+            </ul>
+          </div>`).join('')}
+      </div>
+      <div class="modal-actions" style="margin-top:14px">
+        <button class="btn primary" onclick="this.closest('.modal-overlay').remove()">Close</button>
+      </div>
+    </div>`;
+  document.body.appendChild(el);
+  el.addEventListener('click', e => { if (e.target === el) el.remove(); });
+}
+
+const CHANGELOG = [
+  {
+    ver: 'V4.5', label: 'Current',
+    items: [
+      'Version bump following audit stabilisation round.',
+    ],
+  },
+  {
+    ver: 'V4.4', label: 'Security & performance audit',
+    items: [
+      'File writes in sync are now parallel (Promise.all) — faster with many files.',
+      'Heading cache on file objects eliminates repeated DOMParser calls every 300 ms while typing.',
+      'Reconnect modal now calls connectSync() — FileSystemObserver and age timer fully restored.',
+      '"Leave site?" dialog suppressed when auto-save is active (files already on disk).',
+      'md-textarea debounce timer moved to a proper module-level variable.',
+    ],
+  },
+  {
+    ver: 'V4.3', label: 'Sync reliability',
+    items: [
+      'F5 reload now calls the full connectSync() flow — folder is re-read and observer is re-established.',
+      'Sync age label starts counting from 0 s immediately on connect, before the first write.',
+      'App name and version moved to a permanently centred navbar brand.',
+    ],
+  },
+  {
+    ver: 'V4.2', label: 'Real-time file detection',
+    items: [
+      'FileSystemObserver (Chrome 129+) detects new files in the linked folder instantly.',
+      'Live sync age indicator on the sync button (Xs / Xm since last write).',
+      'Sync icon spins during active write; 60 s polling kept as fallback.',
+    ],
+  },
+  {
+    ver: 'V4.1', label: 'Sync fixes',
+    items: [
+      'Active file content no longer overwritten by stale Quill state on connect.',
+      'Inbound scan: files added externally to the linked folder are picked up on the next poll.',
+    ],
+  },
+  {
+    ver: 'V4.0', label: 'Local folder sync',
+    items: [
+      'Link a local folder for automatic .md save (File System Access API — Chrome/Edge/Brave).',
+      'Folder content wins over in-memory workspace on connect.',
+      'Auto-save triggers on tab switch, page hide, and every 60 s.',
+    ],
+  },
+  {
+    ver: 'V3.0', label: 'Collapsible sections & outline',
+    items: [
+      'Click the collapse button beside any heading to fold its section.',
+      'Collapse all / Expand all applies to both the explorer tree and the editor.',
+      'Wide/compact toggle removes the max-width cap on the editor.',
+      'OS dark-mode preference applied automatically on first load.',
+    ],
+  },
+  {
+    ver: 'V2.x', label: 'Markdown fidelity',
+    items: [
+      'Blockquote and GFM table round-trip rendering fixed.',
+      '==highlight== syntax (mark blot) added to editor and markdown panes.',
+      'Horizontal rule import and export fixed.',
+    ],
+  },
+  {
+    ver: 'V1.0', label: 'Foundation',
+    items: [
+      'Single-file rich text editor — no build step, deployable to GitHub Pages.',
+      'Quill toolbar: headings, bold, italic, lists, blockquotes, code blocks, links, HR.',
+      'Markdown split pane with live two-way sync.',
+      'File explorer with folders, drag & drop reorder, and tab bar.',
+      'SRI-hashed CDN dependencies; XSS sanitizer on all markdown input.',
+    ],
+  },
+];
+
 function init() {
-  document.getElementById('nav-brand').innerHTML =
-    'editorapp <span class="app-ver">' + APP_VERSION + '</span>';
+  const brand = document.getElementById('nav-brand');
+  brand.innerHTML = 'editorapp <span class="app-ver" title="What\'s new">' + APP_VERSION + '</span>';
+  brand.querySelector('.app-ver').addEventListener('click', showChangelog);
 
   const fetches = PRELOAD_FILES.map(name =>
     fetch(name)
