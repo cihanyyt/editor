@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>editorapp V4.6</title>
+<title>editorapp V4.7</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://cdnjs.cloudflare.com">
@@ -372,16 +372,27 @@ html[data-theme="dark"] .ql-editor mark { background: #7a6000; color: #ffe8a0; }
 #empty-state {
   flex: 1; display: flex; flex-direction: column;
   align-items: center; justify-content: center;
-  gap: 12px; color: var(--c-text3); text-align: center; padding: 40px;
+  gap: 14px; color: var(--c-text3); text-align: center; padding: 40px;
+  cursor: pointer; user-select: none;
 }
 .empty-mark {
   font-family: var(--f-mono); font-size: 48px; font-weight: 700;
-  color: var(--c-accent); opacity: 0.2; line-height: 1;
+  color: var(--c-accent); opacity: 0.15; line-height: 1;
 }
 .empty-title { font-size: 15px; font-weight: 600; color: var(--c-text3); }
 .empty-sub {
   font-family: var(--f-mono); font-size: 11px; color: var(--c-text3);
   max-width: 260px; line-height: 1.7;
+}
+@keyframes neo-blink  { 0%,100%{opacity:1} 50%{opacity:0} }
+@keyframes neo-bounce { 0%,100%{transform:translateY(0);opacity:.35} 55%{transform:translateY(7px);opacity:.8} }
+.neo-blink  { display:inline-block; animation: neo-blink 1s step-end infinite; }
+.neo-arrow  { font-size:18px; color:var(--c-accent); animation: neo-bounce 1.6s ease-in-out infinite; }
+.neo-hint   { font-family:var(--f-mono); font-size:11px; color:var(--c-accent); opacity:.55; letter-spacing:.03em; }
+.neo-hint .neo-mobile  { display:none; }
+@media (hover: none) {
+  .neo-hint .neo-desktop { display:none; }
+  .neo-hint .neo-mobile  { display:inline; }
 }
 
 /* ─── MAIN AREA (drawer + content side-by-side) ──────────── */
@@ -798,9 +809,13 @@ html[data-theme="dark"] .ql-editor mark { background: rgba(255,200,0,0.18); }
         <div id="tabbar"></div>
         <div id="editor-area">
           <div id="empty-state">
-            <div class="empty-mark">#</div>
-            <div class="empty-title">No document open</div>
-            <div class="empty-sub">Tap the menu to create or open a file</div>
+            <div class="empty-mark">>_<span class="neo-blink">█</span></div>
+            <div class="empty-title">wake up, Neo.</div>
+            <div class="neo-hint">
+              <span class="neo-desktop">↵ press Enter &nbsp;·&nbsp; or scroll ↓</span>
+              <span class="neo-mobile">tap or swipe down</span>
+            </div>
+            <div class="neo-arrow">↓</div>
           </div>
         </div>
       </div>
@@ -835,7 +850,7 @@ html[data-theme="dark"] .ql-editor mark { background: rgba(255,200,0,0.18); }
 // ═══════════════════════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════════════════════
-const APP_VERSION = 'V4.6';
+const APP_VERSION = 'V4.7';
 // Markdown files in the repo root to load automatically on startup.
 // Adjust this list to match the .md files alongside index.html.
 const PRELOAD_FILES = [];   // no files auto-loaded on startup — terminal welcome shown instead
@@ -1994,13 +2009,56 @@ function closeTab(fileId) {
   if (S.splitOpen) syncMdPane();
 }
 
+let _neoKeyListener = null;
+let _neoWheelListener = null;
+
+function _teardownNeoListeners() {
+  if (_neoKeyListener)   { document.removeEventListener('keydown', _neoKeyListener); _neoKeyListener = null; }
+  if (_neoWheelListener) { document.removeEventListener('wheel',   _neoWheelListener); _neoWheelListener = null; }
+}
+
+function createWonderland() {
+  _teardownNeoListeners();
+  let file = S.files.find(f => f.name === 'wonderland.md');
+  if (!file) {
+    file = { id: uid(), name: 'wonderland.md', folderId: null, htmlContent: '<p>follow the white rabbit</p>', lastModified: Date.now() };
+    S.files.push(file);
+  }
+  if (!S.openTabs.includes(file.id)) S.openTabs.push(file.id);
+  renderTree();
+  openFile(file.id);
+}
+
 function showEmptyState() {
+  _teardownNeoListeners();
   document.getElementById('editor-area').innerHTML = `
     <div id="empty-state">
-      <div class="empty-mark">#</div>
-      <div class="empty-title">No document open</div>
-      <div class="empty-sub">Tap the menu to create or open a file</div>
+      <div class="empty-mark">&gt;_<span class="neo-blink">&#9608;</span></div>
+      <div class="empty-title">wake up, Neo.</div>
+      <div class="neo-hint">
+        <span class="neo-desktop">&#8629; press Enter &nbsp;&middot;&nbsp; or scroll &darr;</span>
+        <span class="neo-mobile">tap or swipe down</span>
+      </div>
+      <div class="neo-arrow">&darr;</div>
     </div>`;
+
+  const el = document.getElementById('empty-state');
+
+  // click / tap
+  el.addEventListener('click', createWonderland, { once: true });
+
+  // swipe down (touch)
+  let _ty = 0;
+  el.addEventListener('touchstart', e => { _ty = e.touches[0].clientY; }, { passive: true });
+  el.addEventListener('touchend',   e => { if (e.changedTouches[0].clientY - _ty > 30) createWonderland(); }, { once: true });
+
+  // scroll wheel (desktop / trackpad)
+  _neoWheelListener = e => { if (e.deltaY > 0) createWonderland(); };
+  document.addEventListener('wheel', _neoWheelListener, { once: true });
+
+  // Enter key (desktop)
+  _neoKeyListener = e => { if (e.key === 'Enter' && !e.ctrlKey && !e.metaKey) createWonderland(); };
+  document.addEventListener('keydown', _neoKeyListener);
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -2352,7 +2410,14 @@ function showChangelog() {
 
 const CHANGELOG = [
   {
-    ver: 'V4.6', label: 'Current',
+    ver: 'V4.7', label: 'Current',
+    items: [
+      'Neo empty state: no startup file; press Enter / scroll / tap to create wonderland.md.',
+      'Mobile-friendly: swipe down or tap triggers onboarding file creation.',
+    ],
+  },
+  {
+    ver: 'V4.6', label: 'Stability',
     items: [
       'Simplified startup: single wake_up_neo.md file, no crash on load.',
     ],
@@ -2438,11 +2503,8 @@ function init() {
   brand.innerHTML = 'editorapp <span class="app-ver" title="What\'s new">' + APP_VERSION + '</span>';
   brand.querySelector('.app-ver').addEventListener('click', showChangelog);
 
-  const startFile = { id: uid(), name: 'wake_up_neo.md', folderId: null, htmlContent: '<p>The Matrix has you, Neo.</p>', lastModified: Date.now() };
-  S.files.push(startFile);
-  S.openTabs.push(startFile.id);
   renderTree();
-  openFile(startFile.id);
+  showEmptyState();
 
   if (window.innerWidth > 767) openDrawer();
 
