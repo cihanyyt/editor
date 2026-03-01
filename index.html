@@ -271,14 +271,14 @@ body.split-active #md-pane { width: 40%; }
   #btn-split span { display: none; }
   #btn-split { width: 44px; }
 
-  /* Brand: pull out of absolute centering, sit right of the hamburger */
+  /* Brand: left-aligned next to hamburger */
   #nav-brand {
     position: static; left: auto; transform: none;
-    margin-left: auto; flex-shrink: 0; font-size: 12px;
+    margin-left: 8px; flex-shrink: 0; font-size: 12px;
   }
 
-  /* Icon strip: show 2 icons (88px), rest swipe-accessible */
-  #nav-actions { overflow-x: auto; max-width: calc(2 * 44px); }
+  /* Icon strip: pushed to right, shows read + markdown by default, rest swipe-accessible */
+  #nav-actions { overflow-x: auto; max-width: calc(2 * 44px); margin-left: auto; }
 
   /* Larger touch targets */
   .tree-row { min-height: 40px; }
