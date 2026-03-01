@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>editorapp V4.9</title>
+<title>editorapp V5.0</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://cdnjs.cloudflare.com">
@@ -854,7 +854,7 @@ html[data-theme="dark"] .ql-editor mark { background: rgba(255,200,0,0.18); }
 // ═══════════════════════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════════════════════
-const APP_VERSION = 'V4.9';
+const APP_VERSION = 'V5.0';
 // Markdown files in the repo root to load automatically on startup.
 // Adjust this list to match the .md files alongside index.html.
 const PRELOAD_FILES = [];   // no files auto-loaded on startup — terminal welcome shown instead
@@ -990,6 +990,13 @@ function sanitizeHtml(html) {
 function mdToHtml(md) {
   return md ? sanitizeHtml(marked.parse(md)) : '';
 }
+// Lazily convert _srcMd → htmlContent on first use (avoids blocking main thread on import)
+function resolveHtml(file) {
+  if (file && file._srcMd !== undefined) {
+    file.htmlContent = mdToHtml(file._srcMd);
+    delete file._srcMd;
+  }
+}
 
 // ═══════════════════════════════════════════════════════════
 // COLLAPSIBLE SECTIONS
@@ -1099,6 +1106,7 @@ function scheduleTreeSync() {
 function getFileHeadings(file) {
   if (!file) return [];
   if (file._headingsCache !== undefined) return file._headingsCache;
+  resolveHtml(file);
   if (!file.htmlContent || file.htmlContent === '<p><br></p>') return (file._headingsCache = []);
   const doc = new DOMParser().parseFromString(file.htmlContent, 'text/html');
   const out = [];
@@ -1414,9 +1422,10 @@ async function syncAllFiles() {
     btn?.classList.add('syncing');
     await Promise.all(S.files.map(async file => {
       const fname = file.name.endsWith('.md') ? file.name : file.name + '.md';
-      const content = file.id === S.activeTab && quill
-        ? htmlToMd(getCleanHTML())
-        : htmlToMd(file.htmlContent || '');
+      // If file was imported but never opened, write original markdown directly — no round-trip.
+      const content = file._srcMd !== undefined
+        ? file._srcMd
+        : (file.id === S.activeTab && quill ? htmlToMd(getCleanHTML()) : htmlToMd(file.htmlContent || ''));
       const fh = await _syncHandle.getFileHandle(fname, { create: true });
       const writable = await fh.createWritable();
       await writable.write(content);
@@ -1449,7 +1458,7 @@ async function _importNewFilesFromFolder() {
       const alreadyExists = S.files.some(f => (f.name.endsWith('.md') ? f.name : f.name + '.md') === name);
       if (alreadyExists) continue;
       const md = await (await entry.getFile()).text();
-      S.files.push({ id: uid(), name, folderId: null, htmlContent: mdToHtml(md), lastModified: Date.now() });
+      S.files.push({ id: uid(), name, folderId: null, htmlContent: '', _srcMd: md, lastModified: Date.now() });
       didImport = true;
     }
   } catch { /* ignore permission errors */ }
@@ -1467,22 +1476,22 @@ async function connectSync(handle) {
   // These need to be written to the folder — collected now before the import loop adds more.
   const preExistingIds = new Set(S.files.map(f => f.id));
 
-  // Import all .md files from the folder; folder content wins over existing workspace files.
-  // Yield to the browser between files so the UI stays responsive.
+  // Import all .md files from the folder — store raw markdown as _srcMd, convert lazily.
+  // This keeps the main thread free during import (no mdToHtml blocking per file).
   const imported = [];
   try {
     for await (const [name, entry] of handle.entries()) {
       if (entry.kind !== 'file' || !name.endsWith('.md')) continue;
       const md = await (await entry.getFile()).text();
-      // Yield — lets the browser paint/handle input between heavy mdToHtml calls
-      await new Promise(r => setTimeout(r, 0));
       const existing = S.files.find(f => f.name === name);
       if (existing) {
-        existing.htmlContent  = mdToHtml(md);
+        existing._srcMd       = md;
+        existing.htmlContent  = '';   // cleared; resolved on next open
+        existing._headingsCache = undefined;
         existing.lastModified = Date.now();
         imported.push(existing);
       } else {
-        const newFile = { id: uid(), name, folderId: null, htmlContent: mdToHtml(md), lastModified: Date.now() };
+        const newFile = { id: uid(), name, folderId: null, htmlContent: '', _srcMd: md, lastModified: Date.now() };
         S.files.push(newFile);
         imported.push(newFile);
       }
@@ -1490,15 +1499,14 @@ async function connectSync(handle) {
   } catch { /* ignore read errors */ }
 
   if (imported.length > 0) {
-    // If the currently active file was overwritten by the import, update quill
-    // with the new content NOW — before openFile() calls flushContent(), which
-    // would otherwise write the stale quill state back over the imported content.
+    // If the currently active file was in the import set, update quill with fresh content.
     const activeImported = imported.find(f => f.id === S.activeTab);
     if (activeImported && quill) {
+      resolveHtml(activeImported);
       quill.root.innerHTML = activeImported.htmlContent;
     }
     renderTree();
-    openFile(imported[0].id);
+    openFile(imported[0].id);   // resolveHtml called inside openFile
   }
 
   // Start the age counter immediately so it shows 0s → 1s → 2s from the moment sync activates
@@ -1552,7 +1560,7 @@ async function connectSync(handle) {
           if (alreadyExists) continue;
           try {
             const md = await (await record.changedHandle.getFile()).text();
-            S.files.push({ id: uid(), name, folderId: null, htmlContent: mdToHtml(md), lastModified: Date.now() });
+            S.files.push({ id: uid(), name, folderId: null, htmlContent: '', _srcMd: md, lastModified: Date.now() });
             didImport = true;
           } catch { /* file may have disappeared already */ }
         }
@@ -2043,7 +2051,8 @@ function openFile(fileId) {
   S.activeTab = fileId;
   treeExpandedFiles.add(fileId);
   quill = null;
-  initQuill(getFile(fileId)?.htmlContent || '');
+  const _of = getFile(fileId); resolveHtml(_of);
+  initQuill(_of?.htmlContent || '');
   renderTabs(); renderTree(); updateNav();
 }
 
@@ -2053,7 +2062,8 @@ function switchTab(fileId) {
   S.activeTab = fileId;
   treeExpandedFiles.add(fileId);
   quill = null;
-  initQuill(getFile(fileId)?.htmlContent || '');
+  const _st = getFile(fileId); resolveHtml(_st);
+  initQuill(_st?.htmlContent || '');
   renderTabs(); renderTree(); updateNav();
 }
 
@@ -2065,7 +2075,8 @@ function closeTab(fileId) {
   }
   quill = null;
   if (S.activeTab) {
-    initQuill(getFile(S.activeTab)?.htmlContent || '');
+    const _ct = getFile(S.activeTab); resolveHtml(_ct);
+    initQuill(_ct?.htmlContent || '');
   } else {
     showEmptyState();
   }
@@ -2238,7 +2249,7 @@ function exportWorkspace() {
   S.files.forEach(file => {
     const fp   = folderPath(file.folderId);
     const path = fp ? fp.replace(/ \/ /g, '/') + '/' + file.name : file.name;
-    zip.file(path, htmlToMd(file.htmlContent || ''));
+    zip.file(path, file._srcMd !== undefined ? file._srcMd : htmlToMd(file.htmlContent || ''));
   });
   zip.generateAsync({ type: 'blob' }).then(blob => dl('editorapp-workspace.zip', blob));
 }
@@ -2476,13 +2487,19 @@ function showChangelog() {
 
 const CHANGELOG = [
   {
-    ver: 'V4.9', label: 'Current',
+    ver: 'V5.0', label: 'Current',
     items: [
-      'Fix sync freezes: imported files no longer written back to disk immediately on connect.',
-      'Yield between file imports so the UI stays responsive during large folder scans.',
-      'Concurrency guard on syncAllFiles prevents overlapping write operations.',
+      'Lazy HTML conversion on sync: files are imported as raw markdown and only parsed when opened.',
+      'Eliminates all mdToHtml blocking on the main thread during folder connect.',
+      'Unopened files write their original markdown to disk — no HTML round-trip conversion.',
+      'File tree headings still resolve on demand when a file node is expanded.',
+    ],
+  },
+  {
+    ver: 'V4.9', label: 'Sync stability',
+    items: [
+      'Concurrency guard prevents overlapping syncAllFiles runs.',
       'Inbound file scan skipped during 60s poll when FileSystemObserver is active.',
-      'Stale _syncAllRunning flag reset on disconnect.',
     ],
   },
   {
