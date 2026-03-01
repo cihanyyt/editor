@@ -635,42 +635,6 @@ html[data-theme="dark"] #btn-split { border-color: rgba(0,216,200,0.45); }
   background: currentColor; flex-shrink: 0;
 }
 
-/* ─── TERMINAL WELCOME ───────────────────────────────────── */
-#welcome-overlay {
-  position: fixed; inset: 0; z-index: 9999;
-  background: #020d02;
-  display: flex; align-items: center; justify-content: center;
-  padding: 24px;
-  transition: opacity 0.5s;
-}
-#welcome-terminal {
-  width: 100%; max-width: 580px;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 13px; line-height: 1.85;
-  color: #00b850;
-}
-#welcome-terminal .tw-dim    { color: #1e5e28; }
-#welcome-terminal .tw-ok     { color: #00d060; font-weight: 600; }
-#welcome-terminal .tw-bright { color: #a0ffb0; font-weight: 700; }
-#welcome-terminal .tw-warn   { color: #e07830; }
-#welcome-terminal .tw-prompt { color: #00d060; }
-#welcome-output > div { min-height: 1.85em; }
-.tw-cursor {
-  display: inline-block; width: 9px; height: 1.1em;
-  background: #00d060; vertical-align: text-bottom; margin-left: 2px;
-  animation: tw-blink 1s step-end infinite;
-}
-@keyframes tw-blink { 0%,100%{opacity:1} 50%{opacity:0} }
-#welcome-enter {
-  display: inline-block; margin-top: 18px;
-  font-family: 'JetBrains Mono', monospace; font-size: 11px;
-  color: #00b850; background: transparent;
-  border: 1px solid #1e5e28; border-radius: 3px;
-  padding: 7px 18px; cursor: pointer; letter-spacing: 0.06em;
-  transition: border-color 0.15s, color 0.15s;
-}
-#welcome-enter:hover { border-color: #00d060; color: #00d060; }
-
 /* ─── MARK / HIGHLIGHT ───────────────────────────────────── */
 .ql-editor mark { background: #ffe0661a; color: inherit; border-radius: 2px; padding: 0 2px; }
 html[data-theme="dark"] .ql-editor mark { background: rgba(255,200,0,0.18); }
@@ -2351,83 +2315,6 @@ document.addEventListener('drop', e => {
 // ═══════════════════════════════════════════════════════════
 
 // ═══════════════════════════════════════════════════════════
-// TERMINAL WELCOME
-// ═══════════════════════════════════════════════════════════
-function showTerminalWelcome() {
-  const overlay = document.createElement('div');
-  overlay.id = 'welcome-overlay';
-  overlay.innerHTML = `
-    <div id="welcome-terminal">
-      <div id="welcome-output"></div>
-      <div id="welcome-prompt" style="display:none">
-        <span class="tw-cursor"></span>
-        <br>
-        <button id="welcome-enter">[ press any key to enter ]</button>
-      </div>
-    </div>`;
-  document.body.appendChild(overlay);
-
-  const output  = overlay.querySelector('#welcome-output');
-  const prompt  = overlay.querySelector('#welcome-prompt');
-
-  const dismiss = () => {
-    document.removeEventListener('keydown', dismiss);
-    overlay.style.opacity = '0';
-    setTimeout(() => overlay.remove(), 500);
-  };
-
-  // Each line: html content + delay in ms
-  const LINES = [
-    { h: '<span class="tw-dim">╔══════════════════════════════════════════════════╗</span>', d: 0 },
-    { h: '<span class="tw-dim">║</span>  EDITORAPP TERMINAL  <span class="tw-dim">[build ' + APP_VERSION + ']</span>                   <span class="tw-dim">║</span>', d: 60 },
-    { h: '<span class="tw-dim">╚══════════════════════════════════════════════════╝</span>', d: 120 },
-    { h: '', d: 220 },
-    { h: '<span class="tw-prompt">&gt;</span> wake_up_neo.exe', d: 380 },
-    { h: '', d: 600 },
-    { h: '  loading reality subsystem ................ <span class="tw-ok">OK</span>', d: 820 },
-    { h: '  mounting the void ........................ <span class="tw-ok">OK</span>', d: 1150 },
-    { h: '  compiling unwritten documentation ........ <span class="tw-warn">STILL PENDING</span>', d: 1480 },
-    { h: '  measuring technical debt ................. <span class="tw-warn">∞</span>', d: 1810 },
-    { h: '  bootstrapping imposter syndrome .......... <span class="tw-ok">OK</span>', d: 2140 },
-    { h: '  running git blame (last 90 days) ......... <span class="tw-dim">no comment</span>', d: 2470 },
-    { h: '  checking if you wrote docs this week ..... <span class="tw-warn">FAILED</span>', d: 2800 },
-    { h: '', d: 3150 },
-    { h: '<span class="tw-dim">──────────────────────────────────────────────────</span>', d: 3280 },
-    { h: '', d: 3420 },
-    { h: '  <span class="tw-bright">The Matrix has you, Neo.</span>', d: 3650 },
-    { h: '', d: 4050 },
-    { h: "  You've been staring at a blinking cursor", d: 4250 },
-    { h: '  your whole life. You just never typed', d: 4500 },
-    { h: '  anything after it.', d: 4750 },
-    { h: '', d: 4980 },
-    { h: '  This is your red pill. Write something.', d: 5180 },
-    { h: '  Or take the blue pill and go back to', d: 5420 },
-    { h: '  Confluence. Your call, Mr. Anderson.', d: 5660 },
-    { h: '', d: 5880 },
-    { h: '<span class="tw-dim">──────────────────────────────────────────────────</span>', d: 6000 },
-    { h: '', d: 6140 },
-    { h: '<span class="tw-prompt">&gt;</span> follow_the_white_rabbit.sh 🐇', d: 6320 },
-    { h: '  <span class="tw-ok">↳ ready.</span>', d: 6780 },
-    { h: '', d: 7050 },
-  ];
-
-  LINES.forEach(({ h, d }) => {
-    setTimeout(() => {
-      const div = document.createElement('div');
-      div.innerHTML = h;
-      output.appendChild(div);
-    }, d);
-  });
-
-  // Show blinking cursor + enter button after all lines
-  setTimeout(() => {
-    prompt.style.display = '';
-    document.addEventListener('keydown', dismiss, { once: true });
-    overlay.querySelector('#welcome-enter').addEventListener('click', dismiss);
-  }, 7300);
-}
-
-// ═══════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════
 function showChangelog() {
@@ -2540,12 +2427,55 @@ const CHANGELOG = [
   },
 ];
 
+const STARTUP_FILES = [
+  {
+    name: 'wake_up_neo.md',
+    md: `# wake_up_neo.exe
+
+\`\`\`
+EDITORAPP OS  /  build ${APP_VERSION}
+──────────────────────────────────────────
+  loading reality subsystem ......... OK
+  compiling unwritten docs ........... STILL PENDING
+  measuring technical debt ........... ∞
+  running git blame (last 90 days) ... no comment
+  docs written this sprint ........... FAILED
+──────────────────────────────────────────
+\`\`\`
+
+---
+
+**The Matrix has you, Neo.**
+
+You've been staring at a blinking cursor your whole life.
+You just never typed anything after it.
+
+*This is your red pill.* Write something real.
+Or take the blue pill and go back to Confluence.
+Your call, Mr. Anderson. 🐇
+
+---
+
+> *"There is no spoon."*
+> — The Matrix, 1999
+> *(There is, however, a Markdown parser.)*
+`,
+  },
+  { name: 'untitled.md', md: '' },
+];
+
 function init() {
   const brand = document.getElementById('nav-brand');
   brand.innerHTML = 'editorapp <span class="app-ver" title="What\'s new">' + APP_VERSION + '</span>';
   brand.querySelector('.app-ver').addEventListener('click', showChangelog);
 
-  showTerminalWelcome();
+  STARTUP_FILES.forEach(({ name, md }) => {
+    const file = { id: uid(), name, folderId: null, htmlContent: mdToHtml(md), lastModified: Date.now() };
+    S.files.push(file);
+    S.openTabs.push(file.id);
+  });
+  renderTree();
+  openFile(S.files[0].id);
 
   if (window.innerWidth > 767) openDrawer();
 
