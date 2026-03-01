@@ -88,10 +88,16 @@ html, body {
   stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round;
 }
 
+#nav-brand {
+  position: absolute; left: 50%; transform: translateX(-50%);
+  font-family: var(--f-ui); font-size: 13px; font-weight: 600;
+  color: var(--c-text); display: flex; align-items: center; gap: 6px;
+  pointer-events: none; white-space: nowrap; z-index: 1;
+}
 #nav-filename {
   flex: 1; min-width: 0;
   font-family: var(--f-mono); font-size: 13px; font-weight: 500;
-  color: var(--c-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  color: var(--c-text2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   padding: 0 6px;
 }
 #nav-filename .path {
@@ -642,8 +648,10 @@ html[data-theme="dark"] .ql-editor mark { background: rgba(255,200,0,0.18); }
 
     <div id="nav-filename">
       <span class="path" id="nav-path"></span>
-      <span class="name" id="nav-name">editorapp</span>
+      <span class="name" id="nav-name"></span>
     </div>
+
+    <div id="nav-brand"></div>
 
     <button class="nav-btn" id="btn-split" onclick="toggleSplit()" title="Toggle Markdown split (⌘M)">
       <svg viewBox="0 0 24 24">
@@ -1931,7 +1939,7 @@ function updateNav() {
     nameEl.textContent = f.name;
     document.title = f.name + ' — editorapp ' + APP_VERSION;
   } else {
-    nameEl.innerHTML = 'editorapp <span class="app-ver">' + APP_VERSION + '</span>';
+    nameEl.textContent = '';
     document.title = 'editorapp ' + APP_VERSION;
   }
 }
@@ -2330,6 +2338,9 @@ const WELCOME_HTML = `<h1>Welcome to editorapp</h1>
 `;
 
 function init() {
+  document.getElementById('nav-brand').innerHTML =
+    'editorapp <span class="app-ver">' + APP_VERSION + '</span>';
+
   const fetches = PRELOAD_FILES.map(name =>
     fetch(name)
       .then(r => r.ok ? r.text() : Promise.reject())
