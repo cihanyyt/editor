@@ -2002,6 +2002,7 @@ function togglePrivacy() {
 // OPEN / SWITCH / CLOSE TABS
 // ═══════════════════════════════════════════════════════════
 function openFile(fileId) {
+  _teardownNeoListeners();
   flushContent();
   if (!S.openTabs.includes(fileId)) S.openTabs.push(fileId);
   S.activeTab = fileId;
