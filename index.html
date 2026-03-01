@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>editorapp V5.3</title>
+<title>editorapp V5.4</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://cdnjs.cloudflare.com">
@@ -570,24 +570,26 @@ body.drawer-open #drawer { width: var(--sb-w); }
 *::-webkit-scrollbar { display: none; }
 input[type=file] { display: none; }
 
-/* ─── DARK THEME ─────────────────────────────────────────── */
+/* ─── DARK THEME — Linux terminal / phosphor green ───────── */
 html[data-theme="dark"] {
-  --c-base:       #080b0f;
-  --c-surface:    #0e1318;
-  --c-raised:     #151c24;
-  --c-border:     #1e2a35;
-  --c-border-hi:  #2a3a4a;
-  --c-accent:     #00d8c8;
-  --c-accent-dim: rgba(0,216,200,0.12);
-  --c-accent2:    #f0833a;
-  --c-text:       #dce8f0;
-  --c-text2:      #7a93a6;
-  --c-text3:      #3a5060;
-  --c-danger:     #f05060;
-  --c-code:       #5de8b0;
+  --c-base:       #0c0c0c;
+  --c-surface:    #111111;
+  --c-raised:     #181818;
+  --c-border:     #1a2e1a;
+  --c-border-hi:  #2a4a2a;
+  --c-accent:     #00ff41;
+  --c-accent-dim: rgba(0,255,65,0.08);
+  --c-accent2:    #ffb347;
+  --c-text:       #c8ffc8;
+  --c-text2:      #4a7a4a;
+  --c-text3:      #2a5a2a;
+  --c-danger:     #ff3333;
+  --c-code:       #00ff41;
 }
-html[data-theme="dark"] .modal-overlay { background: rgba(0,0,0,0.75); }
-html[data-theme="dark"] #btn-split { border-color: rgba(0,216,200,0.45); }
+html[data-theme="dark"] .modal-overlay { background: rgba(0,0,0,0.88); }
+html[data-theme="dark"] #btn-split { border-color: rgba(0,255,65,0.4); }
+html[data-theme="dark"] .empty-terminal,
+html[data-theme="dark"] .privacy-terminal { text-shadow: 0 0 14px rgba(0,255,65,0.55); }
 
 /* ─── MARKDOWN SPLIT BUTTON ──────────────────────────────── */
 #btn-split {
@@ -857,7 +859,7 @@ html[data-theme="dark"] .ql-editor mark { background: rgba(255,200,0,0.18); }
 // ═══════════════════════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════════════════════
-const APP_VERSION = 'V5.3';
+const APP_VERSION = 'V5.4';
 // Markdown files in the repo root to load automatically on startup.
 // Adjust this list to match the .md files alongside index.html.
 const PRELOAD_FILES = [];   // no files auto-loaded on startup — terminal welcome shown instead
@@ -2485,7 +2487,15 @@ function showChangelog() {
 
 const CHANGELOG = [
   {
-    ver: 'V5.3', label: 'Current',
+    ver: 'V5.4', label: 'Current',
+    items: [
+      'Dark mode redesigned as a Linux terminal / phosphor green theme.',
+      'Near-black background, Matrix green accent, green-tinted text throughout.',
+      'Phosphor glow on the Neo empty state and privacy overlay in dark mode.',
+    ],
+  },
+  {
+    ver: 'V5.3', label: 'Save button removed',
     items: [
       'Save button removed — content lives in memory and exports handle persistence.',
       'Sync button now triggers an immediate manual sync when a folder is linked.',
