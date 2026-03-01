@@ -1267,6 +1267,7 @@ let _syncHandle     = null;   // FileSystemDirectoryHandle | null
 let _syncActive     = false;
 let _syncTimer      = null;
 let _syncIntervalId = null;
+let _syncObserver   = null;   // FileSystemObserver | null
 
 // ── IndexedDB persistence for the directory handle ─────────
 function _syncDb(mode) {
@@ -1362,16 +1363,7 @@ async function syncAllFiles() {
       await writable.close();
     }
     // Pull in any new .md files added to the folder externally
-    let didImport = false;
-    for await (const [name, entry] of _syncHandle.entries()) {
-      if (entry.kind !== 'file' || !name.endsWith('.md')) continue;
-      const alreadyExists = S.files.some(f => (f.name.endsWith('.md') ? f.name : f.name + '.md') === name);
-      if (alreadyExists) continue;
-      const md = await (await entry.getFile()).text();
-      S.files.push({ id: uid(), name, folderId: null, htmlContent: mdToHtml(md), lastModified: Date.now() });
-      didImport = true;
-    }
-    if (didImport) renderTree();
+    if (await _importNewFilesFromFolder()) renderTree();
   } catch (err) {
     if (err.name === 'NotAllowedError') {
       _syncActive = false;
@@ -1382,6 +1374,23 @@ async function syncAllFiles() {
   } finally {
     btn?.classList.remove('syncing');
   }
+}
+
+// ── Inbound: import new .md files from folder not yet in app ──
+async function _importNewFilesFromFolder() {
+  if (!_syncHandle) return false;
+  let didImport = false;
+  try {
+    for await (const [name, entry] of _syncHandle.entries()) {
+      if (entry.kind !== 'file' || !name.endsWith('.md')) continue;
+      const alreadyExists = S.files.some(f => (f.name.endsWith('.md') ? f.name : f.name + '.md') === name);
+      if (alreadyExists) continue;
+      const md = await (await entry.getFile()).text();
+      S.files.push({ id: uid(), name, folderId: null, htmlContent: mdToHtml(md), lastModified: Date.now() });
+      didImport = true;
+    }
+  } catch { /* ignore permission errors */ }
+  return didImport;
 }
 
 // ── Connect / disconnect ───────────────────────────────────
@@ -1424,11 +1433,40 @@ async function connectSync(handle) {
 
   await syncAllFiles();   // write every file to the folder
   clearInterval(_syncIntervalId);
-  _syncIntervalId = setInterval(syncAllFiles, 60000);   // then every 60 s
+  _syncIntervalId = setInterval(syncAllFiles, 60000);   // polling fallback every 60 s
+
+  // Real-time detection via FileSystemObserver (Chrome 129+)
+  if ('FileSystemObserver' in window) {
+    if (_syncObserver) _syncObserver.disconnect();
+    _syncObserver = new FileSystemObserver(async (records) => {
+      let didImport = false;
+      for (const record of records) {
+        if (record.type === 'unknown') {
+          // Missed events — do a full inbound scan
+          if (await _importNewFilesFromFolder()) didImport = true;
+          continue;
+        }
+        if (record.type === 'appeared' && record.changedHandle?.kind === 'file') {
+          const name = record.changedHandle.name;
+          if (!name.endsWith('.md')) continue;
+          const alreadyExists = S.files.some(f => (f.name.endsWith('.md') ? f.name : f.name + '.md') === name);
+          if (alreadyExists) continue;
+          try {
+            const md = await (await record.changedHandle.getFile()).text();
+            S.files.push({ id: uid(), name, folderId: null, htmlContent: mdToHtml(md), lastModified: Date.now() });
+            didImport = true;
+          } catch { /* file may have disappeared already */ }
+        }
+      }
+      if (didImport) renderTree();
+    });
+    await _syncObserver.observe(handle);
+  }
 }
 async function disconnectSync() {
   clearInterval(_syncIntervalId);
   _syncIntervalId = null;
+  if (_syncObserver) { _syncObserver.disconnect(); _syncObserver = null; }
   _syncHandle = null;
   _syncActive = false;
   clearTimeout(_syncTimer);
