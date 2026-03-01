@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>editorapp V4.3</title>
+<title>editorapp V4.4</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://cdnjs.cloudflare.com">
@@ -830,7 +830,7 @@ html[data-theme="dark"] .ql-editor mark { background: rgba(255,200,0,0.18); }
 // ═══════════════════════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════════════════════
-const APP_VERSION = 'V4.3';
+const APP_VERSION = 'V4.4';
 // Markdown files in the repo root to load automatically on startup.
 // Adjust this list to match the .md files alongside index.html.
 const PRELOAD_FILES = ['GermanA1_Emails.md', 'GermanA1_Cheatsheet.md', 'GermanA1_Speaking.md'];
@@ -874,7 +874,8 @@ Quill.register(MarkBlot);
 
 let quill = null;
 let mdSyncTimer = null;
-let isSyncingBack = false;   // prevent quill↔md infinite loop
+let isSyncingBack  = false;   // prevent quill↔md infinite loop
+let _mdBackTimer   = null;    // debounce timer for md-textarea → quill sync
 let collapsedHeadings  = new WeakSet();
 let outlineSyncTimer   = null;
 let treeExpandedFiles  = new Set();
@@ -1072,13 +1073,15 @@ function scheduleTreeSync() {
 
 // ── Inline heading helpers ──────────────────────────────────
 function getFileHeadings(file) {
-  if (!file?.htmlContent || file.htmlContent === '<p><br></p>') return [];
+  if (!file) return [];
+  if (file._headingsCache !== undefined) return file._headingsCache;
+  if (!file.htmlContent || file.htmlContent === '<p><br></p>') return (file._headingsCache = []);
   const doc = new DOMParser().parseFromString(file.htmlContent, 'text/html');
   const out = [];
   doc.body.querySelectorAll('h1, h2, h3').forEach(el => {
     out.push({ level: parseInt(el.tagName[1]), text: el.textContent.trim() });
   });
-  return out;
+  return (file._headingsCache = out);
 }
 
 function toggleTreeExpand(fileId) {
@@ -1223,11 +1226,12 @@ document.getElementById('md-textarea').addEventListener('input', () => {
   const file = getFile(S.activeTab);
   if (!file || !quill) return;
   // Use a separate timer — never cancel the quill→md sync timer (mdSyncTimer)
-  clearTimeout(document._mdBackTimer);
-  document._mdBackTimer = setTimeout(() => {
+  clearTimeout(_mdBackTimer);
+  _mdBackTimer = setTimeout(() => {
     const html = mdToHtml(document.getElementById('md-textarea').value);
-    file.htmlContent  = html;
-    file.lastModified = Date.now();
+    file.htmlContent    = html;
+    file.lastModified   = Date.now();
+    file._headingsCache = undefined;
     // Setting innerHTML directly is seen as source='api' by Quill,
     // so our text-change guard (source !== 'user') will ignore it — no loop.
     quill.root.innerHTML = html;
@@ -1381,7 +1385,7 @@ async function syncAllFiles() {
   flushContent();   // flush active quill state into file.htmlContent
   try {
     btn?.classList.add('syncing');
-    for (const file of S.files) {
+    await Promise.all(S.files.map(async file => {
       const fname = file.name.endsWith('.md') ? file.name : file.name + '.md';
       const content = file.id === S.activeTab && quill
         ? htmlToMd(getCleanHTML())
@@ -1390,7 +1394,7 @@ async function syncAllFiles() {
       const writable = await fh.createWritable();
       await writable.write(content);
       await writable.close();
-    }
+    }));
     _lastSyncTime = Date.now();
     _updateSyncAge();
     // Pull in any new .md files added to the folder externally
@@ -1593,15 +1597,17 @@ function _showSyncReconnectModal() {
         Grant access again to resume auto-save.
       </p>
       <div class="modal-actions">
-        <button class="btn ghost" onclick="disconnectSync();this.closest('.modal-overlay').remove()">Forget folder</button>
-        <button class="btn primary" onclick="
-          _syncHandle.requestPermission({ mode:'readwrite' })
-            .then(p => { if(p==='granted'){ _syncActive=true; updateSyncButton(); syncAllFiles(); clearInterval(_syncIntervalId); _syncIntervalId=setInterval(syncAllFiles,60000); } this.closest('.modal-overlay').remove(); })
-            .catch(() => this.closest('.modal-overlay').remove())
-        ">Grant Access →</button>
+        <button class="btn ghost" id="_srm-forget">Forget folder</button>
+        <button class="btn primary" id="_srm-grant">Grant Access →</button>
       </div>
     </div>`;
   document.body.appendChild(el);
+  el.querySelector('#_srm-forget').addEventListener('click', () => { disconnectSync(); el.remove(); });
+  el.querySelector('#_srm-grant').addEventListener('click', async () => {
+    const p = await _syncHandle.requestPermission({ mode: 'readwrite' }).catch(() => 'denied');
+    if (p === 'granted') await connectSync(_syncHandle);
+    el.remove();
+  });
   el.addEventListener('click', e => { if (e.target === el) el.remove(); });
 }
 
@@ -1998,8 +2004,9 @@ function showEmptyState() {
 function flushContent() {
   const file = getFile(S.activeTab);
   if (file && quill) {
-    file.htmlContent  = getCleanHTML();
-    file.lastModified = Date.now();
+    file.htmlContent      = getCleanHTML();
+    file.lastModified     = Date.now();
+    file._headingsCache   = undefined;   // invalidate heading cache
   }
 }
 
@@ -2216,9 +2223,9 @@ function showModal(title, label, defaultVal, cb) {
 // For a richer save prompt we intercept the custom save shortcut and
 // also show a persistent reminder banner when files are open.
 window.addEventListener('beforeunload', e => {
-  if (!S.files.length) return;
+  if (!S.files.length || _syncActive) return;   // no files, or safely auto-saved to disk
   e.preventDefault();
-  e.returnValue = '';   // required: triggers browser "Leave site?" dialog
+  e.returnValue = '';   // triggers browser "Leave site?" dialog
 });
 
 // Save all files to the linked folder when the tab is hidden or the page unloads.
