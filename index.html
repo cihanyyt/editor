@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>editorapp V4.7</title>
+<title>editorapp V4.8</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://cdnjs.cloudflare.com">
@@ -93,19 +93,6 @@ html, body {
   font-family: var(--f-ui); font-size: 13px; font-weight: 600;
   color: var(--c-text); display: flex; align-items: center; gap: 6px;
   pointer-events: none; white-space: nowrap; z-index: 1;
-}
-#nav-filename {
-  flex: 1; min-width: 0;
-  font-family: var(--f-mono); font-size: 13px; font-weight: 500;
-  color: var(--c-text2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  padding: 0 6px;
-}
-#nav-filename .path {
-  font-size: 10px; color: var(--c-text3); display: block; margin-bottom: 1px; font-weight: 400;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-#nav-filename .name {
-  display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .app-ver {
   font-size: 10px; font-weight: 500; letter-spacing: 0.04em;
@@ -372,28 +359,44 @@ html[data-theme="dark"] .ql-editor mark { background: #7a6000; color: #ffe8a0; }
 #empty-state {
   flex: 1; display: flex; flex-direction: column;
   align-items: center; justify-content: center;
-  gap: 14px; color: var(--c-text3); text-align: center; padding: 40px;
+  gap: 14px; text-align: center; padding: 40px;
   cursor: pointer; user-select: none;
 }
-.empty-mark {
-  font-family: var(--f-mono); font-size: 48px; font-weight: 700;
-  color: var(--c-accent); opacity: 0.15; line-height: 1;
+.empty-terminal {
+  font-family: var(--f-mono); font-size: 16px; font-weight: 600;
+  color: var(--c-accent); display: flex; align-items: center; gap: 0;
+  letter-spacing: .01em;
 }
-.empty-title { font-size: 15px; font-weight: 600; color: var(--c-text3); }
-.empty-sub {
-  font-family: var(--f-mono); font-size: 11px; color: var(--c-text3);
-  max-width: 260px; line-height: 1.7;
-}
+.neo-prompt { opacity: .45; margin-right: 6px; }
 @keyframes neo-blink  { 0%,100%{opacity:1} 50%{opacity:0} }
 @keyframes neo-bounce { 0%,100%{transform:translateY(0);opacity:.35} 55%{transform:translateY(7px);opacity:.8} }
 .neo-blink  { display:inline-block; animation: neo-blink 1s step-end infinite; }
 .neo-arrow  { font-size:18px; color:var(--c-accent); animation: neo-bounce 1.6s ease-in-out infinite; }
-.neo-hint   { font-family:var(--f-mono); font-size:11px; color:var(--c-accent); opacity:.55; letter-spacing:.03em; }
+.neo-hint   { font-family:var(--f-mono); font-size:11px; color:var(--c-text3); opacity:.7; letter-spacing:.03em; }
 .neo-hint .neo-mobile  { display:none; }
 @media (hover: none) {
   .neo-hint .neo-desktop { display:none; }
   .neo-hint .neo-mobile  { display:inline; }
 }
+/* ─── PRIVACY OVERLAY ────────────────────────────────────── */
+#privacy-overlay {
+  position: fixed; inset: 0; z-index: 9999;
+  background: var(--c-base);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 20px; cursor: pointer; user-select: none;
+}
+.privacy-terminal {
+  font-family: var(--f-mono); font-size: 18px; font-weight: 600;
+  color: var(--c-accent); display: flex; align-items: center;
+  letter-spacing: .01em;
+}
+.privacy-terminal .neo-prompt { opacity: .45; margin-right: 6px; }
+.privacy-hint {
+  font-family: var(--f-mono); font-size: 11px;
+  color: var(--c-text3); opacity: .5; letter-spacing: .05em; text-transform: uppercase;
+}
+#btn-privacy.active svg { stroke: var(--c-accent); }
 
 /* ─── MAIN AREA (drawer + content side-by-side) ──────────── */
 #main-area {
@@ -662,11 +665,6 @@ html[data-theme="dark"] .ql-editor mark { background: rgba(255,200,0,0.18); }
       <svg viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
     </button>
 
-    <div id="nav-filename">
-      <span class="path" id="nav-path"></span>
-      <span class="name" id="nav-name"></span>
-    </div>
-
     <div id="nav-brand"></div>
 
     <button class="nav-btn" id="btn-split" onclick="toggleSplit()" title="Toggle Markdown split (⌘M)">
@@ -704,6 +702,10 @@ html[data-theme="dark"] .ql-editor mark { background: rgba(255,200,0,0.18); }
         <!-- Expand arrows = currently compact, click for wide -->
         <path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3"/>
       </svg>
+    </button>
+
+    <button class="nav-btn" id="btn-privacy" onclick="togglePrivacy()" title="Privacy mode — hide content">
+      <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
     </button>
 
     <button class="nav-btn" id="btn-theme" onclick="toggleTheme()" title="Toggle light/dark mode">
@@ -809,8 +811,10 @@ html[data-theme="dark"] .ql-editor mark { background: rgba(255,200,0,0.18); }
         <div id="tabbar"></div>
         <div id="editor-area">
           <div id="empty-state">
-            <div class="empty-mark">>_<span class="neo-blink">█</span></div>
-            <div class="empty-title">wake up, Neo.</div>
+            <div class="empty-terminal">
+              <span class="neo-prompt">&gt;</span>
+              <span>wake up, Neo.</span><span class="neo-blink">█</span>
+            </div>
             <div class="neo-hint">
               <span class="neo-desktop">↵ press Enter &nbsp;·&nbsp; or scroll ↓</span>
               <span class="neo-mobile">tap or swipe down</span>
@@ -850,7 +854,7 @@ html[data-theme="dark"] .ql-editor mark { background: rgba(255,200,0,0.18); }
 // ═══════════════════════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════════════════════
-const APP_VERSION = 'V4.7';
+const APP_VERSION = 'V4.8';
 // Markdown files in the repo root to load automatically on startup.
 // Adjust this list to match the .md files alongside index.html.
 const PRELOAD_FILES = [];   // no files auto-loaded on startup — terminal welcome shown instead
@@ -1955,18 +1959,42 @@ function renderMdTabs() {
 }
 
 // ═══════════════════════════════════════════════════════════
-// NAV FILENAME
+// NAV / TITLE
 // ═══════════════════════════════════════════════════════════
 function updateNav() {
   const f = getFile(S.activeTab);
-  document.getElementById('nav-path').textContent = f ? folderPath(f.folderId) : '';
-  const nameEl = document.getElementById('nav-name');
-  if (f) {
-    nameEl.textContent = f.name;
-    document.title = f.name + ' — editorapp ' + APP_VERSION;
+  document.title = f ? f.name + ' — editorapp ' + APP_VERSION : 'editorapp ' + APP_VERSION;
+}
+
+// ─── PRIVACY MODE ─────────────────────────────────────────
+let _privacyActive = false;
+let _privacyKeyListener = null;
+
+function togglePrivacy() {
+  _privacyActive = !_privacyActive;
+  const btn = document.getElementById('btn-privacy');
+  if (_privacyActive) {
+    const overlay = document.createElement('div');
+    overlay.id = 'privacy-overlay';
+    overlay.innerHTML = `
+      <div class="privacy-terminal">
+        <span class="neo-prompt">&gt;</span>
+        <span>wake up, Neo.</span><span class="neo-blink">&#9608;</span>
+      </div>
+      <div class="privacy-hint">click or press any key to reveal</div>`;
+    overlay.addEventListener('click', togglePrivacy);
+    document.body.appendChild(overlay);
+    btn.classList.add('active');
+    _privacyKeyListener = () => togglePrivacy();
+    document.addEventListener('keydown', _privacyKeyListener, { once: true });
   } else {
-    nameEl.textContent = '';
-    document.title = 'editorapp ' + APP_VERSION;
+    const el = document.getElementById('privacy-overlay');
+    if (el) el.remove();
+    btn.classList.remove('active');
+    if (_privacyKeyListener) {
+      document.removeEventListener('keydown', _privacyKeyListener);
+      _privacyKeyListener = null;
+    }
   }
 }
 
@@ -2033,8 +2061,10 @@ function showEmptyState() {
   _teardownNeoListeners();
   document.getElementById('editor-area').innerHTML = `
     <div id="empty-state">
-      <div class="empty-mark">&gt;_<span class="neo-blink">&#9608;</span></div>
-      <div class="empty-title">wake up, Neo.</div>
+      <div class="empty-terminal">
+        <span class="neo-prompt">&gt;</span>
+        <span>wake up, Neo.</span><span class="neo-blink">&#9608;</span>
+      </div>
       <div class="neo-hint">
         <span class="neo-desktop">&#8629; press Enter &nbsp;&middot;&nbsp; or scroll &darr;</span>
         <span class="neo-mobile">tap or swipe down</span>
@@ -2410,10 +2440,19 @@ function showChangelog() {
 
 const CHANGELOG = [
   {
-    ver: 'V4.7', label: 'Current',
+    ver: 'V4.8', label: 'Current',
     items: [
-      'Neo empty state: no startup file; press Enter / scroll / tap to create wonderland.md.',
-      'Mobile-friendly: swipe down or tap triggers onboarding file creation.',
+      'Privacy mode: eye button in navbar overlays a screensaver hiding all content.',
+      'Click or press any key to reveal; active state highlighted on nav button.',
+      'Removed filename display from navbar — cleaner header.',
+      '"wake up, Neo." text merged onto the blinking terminal prompt line.',
+    ],
+  },
+  {
+    ver: 'V4.7', label: 'Neo empty state',
+    items: [
+      'No startup file; empty state shows "wake up, Neo." with blinking cursor.',
+      'Press Enter / scroll / tap / swipe to create wonderland.md onboarding file.',
     ],
   },
   {
