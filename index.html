@@ -635,6 +635,42 @@ html[data-theme="dark"] #btn-split { border-color: rgba(0,216,200,0.45); }
   background: currentColor; flex-shrink: 0;
 }
 
+/* ─── TERMINAL WELCOME ───────────────────────────────────── */
+#welcome-overlay {
+  position: fixed; inset: 0; z-index: 9999;
+  background: #020d02;
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px;
+  transition: opacity 0.5s;
+}
+#welcome-terminal {
+  width: 100%; max-width: 580px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px; line-height: 1.85;
+  color: #00b850;
+}
+#welcome-terminal .tw-dim    { color: #1e5e28; }
+#welcome-terminal .tw-ok     { color: #00d060; font-weight: 600; }
+#welcome-terminal .tw-bright { color: #a0ffb0; font-weight: 700; }
+#welcome-terminal .tw-warn   { color: #e07830; }
+#welcome-terminal .tw-prompt { color: #00d060; }
+#welcome-output > div { min-height: 1.85em; }
+.tw-cursor {
+  display: inline-block; width: 9px; height: 1.1em;
+  background: #00d060; vertical-align: text-bottom; margin-left: 2px;
+  animation: tw-blink 1s step-end infinite;
+}
+@keyframes tw-blink { 0%,100%{opacity:1} 50%{opacity:0} }
+#welcome-enter {
+  display: inline-block; margin-top: 18px;
+  font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  color: #00b850; background: transparent;
+  border: 1px solid #1e5e28; border-radius: 3px;
+  padding: 7px 18px; cursor: pointer; letter-spacing: 0.06em;
+  transition: border-color 0.15s, color 0.15s;
+}
+#welcome-enter:hover { border-color: #00d060; color: #00d060; }
+
 /* ─── MARK / HIGHLIGHT ───────────────────────────────────── */
 .ql-editor mark { background: #ffe0661a; color: inherit; border-radius: 2px; padding: 0 2px; }
 html[data-theme="dark"] .ql-editor mark { background: rgba(255,200,0,0.18); }
@@ -838,7 +874,7 @@ html[data-theme="dark"] .ql-editor mark { background: rgba(255,200,0,0.18); }
 const APP_VERSION = 'V4.5';
 // Markdown files in the repo root to load automatically on startup.
 // Adjust this list to match the .md files alongside index.html.
-const PRELOAD_FILES = ['GermanA1_Emails.md', 'GermanA1_Cheatsheet.md', 'GermanA1_Speaking.md'];
+const PRELOAD_FILES = [];   // no files auto-loaded on startup — terminal welcome shown instead
 
 const S = {
   folders:    [],
@@ -2313,41 +2349,83 @@ document.addEventListener('drop', e => {
 // ═══════════════════════════════════════════════════════════
 // WELCOME & INIT
 // ═══════════════════════════════════════════════════════════
-const WELCOME_HTML = `<h1>Welcome to editorapp</h1>
-<p>A minimal, mobile-first documentation editor. Write in rich text — the Markdown source updates live alongside. Everything lives in a single <code>index.html</code> file you can self-host for free on GitHub Pages.</p>
-<h2>Getting started</h2>
-<p>Tap the <strong>☰ menu</strong> (top left) to open the file explorer. From there you can create files and folders, rename them, reorder them by dragging, and import or export your work. Hit the <strong>Markdown</strong> button (top right) to reveal the raw Markdown pane alongside the editor. On mobile, this swaps between the two views full-screen.</p>
-<h2>The editor</h2>
-<p>editorapp uses a rich text editor (Quill) as its primary surface. You write and format as you would in any word processor — headings, bold, italic, lists, blockquotes, code blocks, and links are all available from the toolbar. There is no need to think in Markdown syntax unless you want to.</p>
-<p>Every keystroke is converted to clean Markdown in the background and reflected live in the split pane. You can also edit the Markdown directly in that pane and the rich text view will update after a short pause. Links in the editor open in a new tab on <strong>Ctrl+click</strong>.</p>
-<h2>Keyboard shortcuts</h2>
-<ul>
-<li><code>⌘/Ctrl + M</code> — toggle Markdown split view</li>
-<li><code>⌘/Ctrl + S</code> — save current file</li>
-<li><code>⌘/Ctrl + E</code> — export current file as <code>.md</code></li>
-<li><code>⌘/Ctrl + W</code> — close current tab</li>
-<li><code>⌘/Ctrl + F</code> — toggle file explorer</li>
-<li><code>Esc</code> — close file explorer</li>
-</ul>
-<h2>File organisation</h2>
-<p>Files live inside a folder tree in the explorer drawer. You can nest folders to any depth. Drag a file or folder to reorder it — drop onto the middle of a folder to move inside it, or near the top or bottom edge to reorder above or below it. Moving a folder moves all its contents with it.</p>
-<p>Each document is stored in memory during your session. Nothing is sent to a server. Use <strong>Export Workspace</strong> to download your entire folder structure as a <code>.zip</code> of <code>.md</code> files, preserving all paths. Use <strong>Import Workspace</strong> to restore it later.</p>
-<h2>Hosting on GitHub Pages</h2>
-<p>Because editorapp is a single self-contained <code>index.html</code> file with no backend and no build step, deployment is trivial:</p>
-<ol>
-<li>Create a new GitHub repository (or use an existing one).</li>
-<li>Add <code>index.html</code> to the root of the repository.</li>
-<li>Go to <strong>Settings → Pages</strong>, set the source to the <code>main</code> branch, root path.</li>
-<li>GitHub will publish it at <code>https://&lt;your-username&gt;.github.io/&lt;repo-name&gt;</code> within a minute.</li>
-</ol>
-<p>To use a custom domain, add a <code>CNAME</code> file containing your domain name to the repository root, then point your DNS to GitHub's servers. HTTPS is provisioned automatically.</p>
-<h2>Tips for good documentation</h2>
-<p>Good documentation is written for a specific reader with a specific goal. Before writing, ask: who is this for, and what do they need to be able to do after reading it? Structure your answer around tasks, not features. Use short sentences. Prefer active voice. Put the most important information first.</p>
-<p>Use headings to help readers scan — a reader should be able to understand the shape of a document from its headings alone without reading the body text. Use code blocks for anything a reader might copy. Use lists when you have more than two parallel items. Use bold sparingly, only for things that genuinely must not be missed.</p>
-<p>Version your docs alongside your code. Outdated documentation is worse than no documentation because it actively misleads. A short accurate doc is always better than a long stale one.</p>
-<h2>About</h2>
-<p>editorapp is open source and MIT licensed. Contributions, issues, and forks are welcome. Built with <a href="https://quilljs.com">Quill</a>, <a href="https://github.com/mixmark-io/turndown">Turndown</a>, <a href="https://marked.js.org">Marked</a>, and <a href="https://stuk.github.io/jszip">JSZip</a> — all loaded from CDN, no <code>npm install</code> required.</p>
-`;
+
+// ═══════════════════════════════════════════════════════════
+// TERMINAL WELCOME
+// ═══════════════════════════════════════════════════════════
+function showTerminalWelcome() {
+  const overlay = document.createElement('div');
+  overlay.id = 'welcome-overlay';
+  overlay.innerHTML = `
+    <div id="welcome-terminal">
+      <div id="welcome-output"></div>
+      <div id="welcome-prompt" style="display:none">
+        <span class="tw-cursor"></span>
+        <br>
+        <button id="welcome-enter">[ press any key to enter ]</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  const output  = overlay.querySelector('#welcome-output');
+  const prompt  = overlay.querySelector('#welcome-prompt');
+
+  const dismiss = () => {
+    document.removeEventListener('keydown', dismiss);
+    overlay.style.opacity = '0';
+    setTimeout(() => overlay.remove(), 500);
+  };
+
+  // Each line: html content + delay in ms
+  const LINES = [
+    { h: '<span class="tw-dim">╔══════════════════════════════════════════════════╗</span>', d: 0 },
+    { h: '<span class="tw-dim">║</span>  EDITORAPP TERMINAL  <span class="tw-dim">[build ' + APP_VERSION + ']</span>                   <span class="tw-dim">║</span>', d: 60 },
+    { h: '<span class="tw-dim">╚══════════════════════════════════════════════════╝</span>', d: 120 },
+    { h: '', d: 220 },
+    { h: '<span class="tw-prompt">&gt;</span> wake_up_neo.exe', d: 380 },
+    { h: '', d: 600 },
+    { h: '  loading reality subsystem ................ <span class="tw-ok">OK</span>', d: 820 },
+    { h: '  mounting the void ........................ <span class="tw-ok">OK</span>', d: 1150 },
+    { h: '  compiling unwritten documentation ........ <span class="tw-warn">STILL PENDING</span>', d: 1480 },
+    { h: '  measuring technical debt ................. <span class="tw-warn">∞</span>', d: 1810 },
+    { h: '  bootstrapping imposter syndrome .......... <span class="tw-ok">OK</span>', d: 2140 },
+    { h: '  running git blame (last 90 days) ......... <span class="tw-dim">no comment</span>', d: 2470 },
+    { h: '  checking if you wrote docs this week ..... <span class="tw-warn">FAILED</span>', d: 2800 },
+    { h: '', d: 3150 },
+    { h: '<span class="tw-dim">──────────────────────────────────────────────────</span>', d: 3280 },
+    { h: '', d: 3420 },
+    { h: '  <span class="tw-bright">The Matrix has you, Neo.</span>', d: 3650 },
+    { h: '', d: 4050 },
+    { h: "  You've been staring at a blinking cursor", d: 4250 },
+    { h: '  your whole life. You just never typed', d: 4500 },
+    { h: '  anything after it.', d: 4750 },
+    { h: '', d: 4980 },
+    { h: '  This is your red pill. Write something.', d: 5180 },
+    { h: '  Or take the blue pill and go back to', d: 5420 },
+    { h: '  Confluence. Your call, Mr. Anderson.', d: 5660 },
+    { h: '', d: 5880 },
+    { h: '<span class="tw-dim">──────────────────────────────────────────────────</span>', d: 6000 },
+    { h: '', d: 6140 },
+    { h: '<span class="tw-prompt">&gt;</span> follow_the_white_rabbit.sh 🐇', d: 6320 },
+    { h: '  <span class="tw-ok">↳ ready.</span>', d: 6780 },
+    { h: '', d: 7050 },
+  ];
+
+  LINES.forEach(({ h, d }) => {
+    setTimeout(() => {
+      const div = document.createElement('div');
+      div.innerHTML = h;
+      output.appendChild(div);
+    }, d);
+  });
+
+  // Show blinking cursor + enter button after all lines
+  setTimeout(() => {
+    prompt.style.display = '';
+    document.addEventListener('keydown', dismiss, { once: true });
+    overlay.querySelector('#welcome-enter').addEventListener('click', dismiss);
+  }, 7300);
+}
 
 // ═══════════════════════════════════════════════════════════
 // CHANGELOG
@@ -2467,63 +2545,24 @@ function init() {
   brand.innerHTML = 'editorapp <span class="app-ver" title="What\'s new">' + APP_VERSION + '</span>';
   brand.querySelector('.app-ver').addEventListener('click', showChangelog);
 
-  const fetches = PRELOAD_FILES.map(name =>
-    fetch(name)
-      .then(r => r.ok ? r.text() : Promise.reject())
-      .then(md => ({ name, md }))
-      .catch(() => null)
-  );
+  showTerminalWelcome();
 
-  Promise.all(fetches).then(results => {
-    const loaded = results.filter(Boolean);
-    if (loaded.length === 0) {
-      // Fallback when files can't be fetched (e.g. file:// protocol)
-      const welcome = {
-        id: uid(), name: 'welcome.md', folderId: null,
-        htmlContent: WELCOME_HTML, lastModified: Date.now(),
-      };
-      S.files.push(welcome);
-      renderTree();
-      openFile(welcome.id);
-    } else {
-      loaded.forEach(({ name, md }) => {
-        const file = { id: uid(), name, folderId: null, htmlContent: mdToHtml(md), lastModified: Date.now() };
-        S.files.push(file);
-        S.openTabs.push(file.id);
-      });
-      renderTree();
-      openFile(S.files[0].id);   // activates first file; tabs already pre-populated
-    }
+  if (window.innerWidth > 767) openDrawer();
 
-    if (window.innerWidth > 1200) {
-      // Large desktop: show sidebar + markdown pane for 5 s then collapse
-      openDrawer();
-      toggleSplit();
-      setTimeout(() => {
-        closeDrawer();
-        if (S.splitOpen) toggleSplit();
-      }, 5000);
-    } else if (window.innerWidth > 767) {
-      openDrawer();
-    }
-
-    // Show sync button on supported browsers; restore previous handle if any
-    if ('showDirectoryPicker' in window) {
-      document.getElementById('btn-sync').style.display = '';
-      _getStoredHandle().then(async handle => {
-        if (!handle) return;
-        const perm = await handle.queryPermission({ mode: 'readwrite' });
-        if (perm === 'granted') {
-          // Re-run the full connect flow: reads folder, sets up observer, starts timers
-          await connectSync(handle);
-        } else {
-          // Permission needs re-prompt — show reconnect button only
-          _syncHandle = handle;
-          updateSyncButton();
-        }
-      }).catch(() => {});
-    }
-  });
+  // Show sync button on supported browsers; restore previous handle if any
+  if ('showDirectoryPicker' in window) {
+    document.getElementById('btn-sync').style.display = '';
+    _getStoredHandle().then(async handle => {
+      if (!handle) return;
+      const perm = await handle.queryPermission({ mode: 'readwrite' });
+      if (perm === 'granted') {
+        await connectSync(handle);
+      } else {
+        _syncHandle = handle;
+        updateSyncButton();
+      }
+    }).catch(() => {});
+  }
 }
 
 init();
