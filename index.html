@@ -1361,6 +1361,17 @@ async function syncAllFiles() {
       await writable.write(content);
       await writable.close();
     }
+    // Pull in any new .md files added to the folder externally
+    let didImport = false;
+    for await (const [name, entry] of _syncHandle.entries()) {
+      if (entry.kind !== 'file' || !name.endsWith('.md')) continue;
+      const alreadyExists = S.files.some(f => (f.name.endsWith('.md') ? f.name : f.name + '.md') === name);
+      if (alreadyExists) continue;
+      const md = await (await entry.getFile()).text();
+      S.files.push({ id: uid(), name, folderId: null, htmlContent: mdToHtml(md), lastModified: Date.now() });
+      didImport = true;
+    }
+    if (didImport) renderTree();
   } catch (err) {
     if (err.name === 'NotAllowedError') {
       _syncActive = false;
