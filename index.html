@@ -1211,6 +1211,26 @@ function scrollToHeading(text) {
   el.style.transition = 'background 0.2s';
   el.style.background = 'var(--c-accent-dim)';
   setTimeout(() => { el.style.background = ''; el.style.transition = ''; }, 700);
+  if (S.splitOpen) setTimeout(() => scrollMdPaneToHeading(text), 350);
+}
+
+function syncMdPaneScroll() {
+  const ta = document.getElementById('md-textarea');
+  if (!ta || !quill) return;
+  const ed = quill.root;
+  const maxScroll = ed.scrollHeight - ed.clientHeight;
+  if (maxScroll <= 0) return;
+  ta.scrollTop = (ed.scrollTop / maxScroll) * Math.max(0, ta.scrollHeight - ta.clientHeight);
+}
+
+function scrollMdPaneToHeading(text) {
+  const ta = document.getElementById('md-textarea');
+  if (!ta || !text) return;
+  const lines = ta.value.split('\n');
+  const idx = lines.findIndex(l => /^#{1,6}\s/.test(l) && l.replace(/^#{1,6}\s+/, '').trim() === text.trim());
+  if (idx === -1) return;
+  const ratio = idx / Math.max(1, lines.length - 1);
+  ta.scrollTop = ratio * Math.max(0, ta.scrollHeight - ta.clientHeight);
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1293,7 +1313,10 @@ function initQuill(html) {
     const overlay = document.createElement('div');
     overlay.id = 'collapse-overlay';
     qlContainer.appendChild(overlay);
-    quill.root.addEventListener('scroll', () => requestAnimationFrame(updateCollapseOverlay));
+    quill.root.addEventListener('scroll', () => {
+      requestAnimationFrame(updateCollapseOverlay);
+      if (S.splitOpen) requestAnimationFrame(syncMdPaneScroll);
+    });
   }
 
   quill.on('text-change', (_delta, _old, source) => {
