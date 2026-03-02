@@ -677,19 +677,19 @@ html[data-theme="dark"] .privacy-terminal { text-shadow: 0 0 14px rgba(0,255,65,
   pointer-events: none; z-index: 2; overflow: hidden;
 }
 .collapse-btn {
-  position: absolute; left: 8px;
+  position: absolute;
   width: 20px; height: 20px;
   border: none; background: transparent;
   cursor: pointer; pointer-events: auto;
   color: var(--c-text3); font-size: 9px;
-  border-radius: 3px;
-  opacity: 0; transition: opacity 0.15s, background 0.15s;
+  border-radius: 4px;
+  opacity: 0; transition: opacity 0.15s, background 0.15s, color 0.15s;
   display: flex; align-items: center; justify-content: center;
   transform: translateY(-50%);
 }
-.ql-container:hover .collapse-btn { opacity: 0.4; }
-.collapse-btn:hover { opacity: 1 !important; background: var(--c-raised); color: var(--c-text); }
-.collapse-btn.collapsed { opacity: 1 !important; color: var(--c-accent); }
+.ql-container:hover .collapse-btn { opacity: 0.65; }
+.collapse-btn:hover { opacity: 1 !important; background: var(--c-accent-dim); color: var(--c-accent); }
+.collapse-btn.collapsed { opacity: 1 !important; color: var(--c-accent); background: var(--c-accent-dim); }
 
 /* ─── TREE HEADINGS (inline outline in explorer) ─────────── */
 .tree-heading-row {
@@ -1172,6 +1172,9 @@ function updateCollapseOverlay() {
     btn.textContent = isCollapsed ? '▶' : '▼';
     btn.title       = isCollapsed ? 'Expand section' : 'Collapse section';
     btn.style.top   = top + 'px';
+    // Position just to the left of the heading text, not hardcoded at left:8px
+    const left = rect.left - overlayRect.left - 24;
+    btn.style.left  = Math.max(4, left) + 'px';
     btn.addEventListener('click', () => toggleCollapse(el));
     overlay.appendChild(btn);
   });
