@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>editorapp V5.7</title>
+<title>editorapp V5.8</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://cdnjs.cloudflare.com">
@@ -19,11 +19,11 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --c-base:       #f0f2f5;
+  --c-base:       #f5f3ee;
   --c-surface:    #ffffff;
-  --c-raised:     #e5e8ed;
-  --c-border:     #cdd3da;
-  --c-border-hi:  #b0bac4;
+  --c-raised:     #ece8df;
+  --c-border:     #d4cdc4;
+  --c-border-hi:  #b8b0a4;
   --c-accent:     #009b8e;
   --c-accent-dim: rgba(0,155,142,0.12);
   --c-accent2:    #d46a20;
@@ -56,7 +56,6 @@ html, body {
   display: flex; flex-direction: column;
   height: 100dvh; overflow: hidden;
   position: relative;
-  border-right: 1px solid var(--c-border);
 }
 
 /* ─── NAV BAR ────────────────────────────────────────────── */
@@ -71,7 +70,7 @@ html, body {
 
 .nav-btn {
   display: flex; align-items: center; justify-content: center;
-  width: 44px; height: 44px; border-radius: 10px;
+  width: 44px; height: 44px; border-radius: 8px;
   border: none; background: transparent;
   color: var(--c-text2); cursor: pointer;
   transition: background 0.15s, color 0.15s;
@@ -111,20 +110,56 @@ html, body {
 
 #nav-actions { display: flex; align-items: center; flex-shrink: 0; }
 
-#font-picker, #size-picker {
-  height: 28px;
-  background: transparent; border: 1px solid var(--c-border);
-  color: var(--c-text2); font-family: var(--f-ui); font-size: 11px; font-weight: 600;
-  padding: 0 6px; border-radius: 5px; cursor: pointer; outline: none;
-  transition: border-color 0.15s, color 0.15s;
-  -webkit-appearance: none; appearance: none; vertical-align: middle;
-  flex-shrink: 0;
+/* ─── CUSTOM NAV PICKERS ─────────────────────────────────── */
+.nav-picker-wrap {
+  position: relative; flex-shrink: 0;
 }
-#font-picker:hover,  #size-picker:hover  { border-color: var(--c-border-hi); color: var(--c-text); }
-#font-picker:focus,  #size-picker:focus  { border-color: var(--c-accent); color: var(--c-text); }
-#font-picker option, #size-picker option { background: var(--c-raised); }
-#font-picker { margin-left: 4px; margin-right: 2px; }
-#size-picker { width: 42px; text-align: center; margin-right: 4px; }
+#font-picker-wrap { margin-left: 4px; margin-right: 2px; }
+#size-picker-wrap { margin-right: 4px; }
+
+.nav-picker {
+  display: flex; align-items: center; gap: 5px;
+  height: 28px; padding: 0 8px;
+  background: transparent; border: 1px solid var(--c-border);
+  border-radius: 6px; color: var(--c-text2);
+  font-family: var(--f-ui); font-size: 11px; font-weight: 600;
+  cursor: pointer; outline: none; white-space: nowrap;
+  transition: border-color 0.15s, color 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.nav-picker:hover { border-color: var(--c-border-hi); color: var(--c-text); }
+.nav-picker.open  { border-color: var(--c-accent); color: var(--c-accent); }
+.nav-picker svg   { flex-shrink: 0; transition: transform 0.15s; }
+.nav-picker.open svg { transform: rotate(180deg); }
+
+.nav-picker-dropdown {
+  position: absolute; top: calc(100% + 6px); right: 0;
+  background: var(--c-surface); border: 1px solid var(--c-border);
+  border-radius: 10px; padding: 4px;
+  display: none; flex-direction: column; gap: 1px;
+  z-index: 200; box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+}
+#font-picker-dropdown { min-width: 168px; }
+#size-picker-dropdown { min-width: 80px; }
+.nav-picker-dropdown.open {
+  display: flex;
+  animation: picker-drop-in 0.14s ease;
+}
+@keyframes picker-drop-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.nav-picker-option {
+  display: flex; align-items: center; gap: 6px;
+  width: 100%; text-align: left; padding: 7px 10px;
+  border: none; background: transparent; border-radius: 7px;
+  font-family: var(--f-ui); font-size: 11px; color: var(--c-text2);
+  cursor: pointer; transition: background 0.1s, color 0.1s; white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+}
+.nav-picker-option:hover    { background: var(--c-raised); color: var(--c-text); }
+.nav-picker-option.selected { color: var(--c-accent); }
+.nav-picker-option.selected::before { content: '✓'; font-size: 10px; }
 
 /* ─── WIDE MODE ───────────────────────────────────────────── */
 @media (min-width: 768px) {
@@ -153,7 +188,7 @@ html, body {
 .tab.active { color: var(--c-text); background: var(--c-surface); }
 .tab.active::before {
   content: ''; position: absolute; top: 0; left: 0; right: 0;
-  height: 2px; background: var(--c-accent2);
+  height: 2px; background: var(--c-accent);
 }
 .tab-close {
   font-size: 16px; line-height: 1; color: var(--c-text3);
@@ -193,9 +228,13 @@ body.split-active #split-divider { width: 1px; }
 body.split-active #md-pane { width: 40%; }
 
 .md-pane-header {
-  height: 36px; display: flex; align-items: center; justify-content: space-between;
+  height: 36px; display: flex; align-items: center; gap: 8px;
   padding: 0 14px; border-bottom: 1px solid var(--c-border);
   background: var(--c-surface); flex-shrink: 0;
+}
+.md-word-count {
+  font-family: var(--f-mono); font-size: 10px; color: var(--c-text3);
+  margin-left: auto; margin-right: 4px; letter-spacing: 0.04em;
 }
 .md-pane-label {
   font-family: var(--f-mono); font-size: 10px; font-weight: 600;
@@ -266,7 +305,7 @@ body.split-active #md-pane { width: 40%; }
   }
 
   /* Hide non-essential navbar items */
-  #font-picker, #size-picker, #btn-wide { display: none; }
+  #font-picker-wrap, #size-picker-wrap, #btn-wide { display: none; }
 
   /* Markdown button: icon-only to save space */
   #btn-split span { display: none; }
@@ -299,7 +338,7 @@ body.split-active #md-pane { width: 40%; }
 #quill-mount { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
 
 .ql-toolbar.ql-snow {
-  background: var(--c-surface); border: none;
+  background: var(--c-raised); border: none;
   border-bottom: 1px solid var(--c-border);
   padding: 6px 10px; flex-shrink: 0;
   /* Must be visible — overflow:hidden/auto clips the picker dropdown */
@@ -380,11 +419,11 @@ html[data-theme="dark"] .ql-editor mark { background: #7a6000; color: #ffe8a0; }
   letter-spacing: .01em;
 }
 .neo-prompt { opacity: .45; margin-right: 6px; }
-@keyframes neo-blink  { 0%,100%{opacity:1} 50%{opacity:0} }
-@keyframes neo-bounce { 0%,100%{transform:translateY(0);opacity:.35} 55%{transform:translateY(7px);opacity:.8} }
+@keyframes neo-blink    { 0%,100%{opacity:1} 50%{opacity:0} }
+@keyframes neo-hint-in  { from { opacity: 0; transform: translateY(4px); } to { opacity: .7; transform: none; } }
 .neo-blink  { display:inline-block; animation: neo-blink 1s step-end infinite; }
-.neo-arrow  { font-size:18px; color:var(--c-accent); animation: neo-bounce 1.6s ease-in-out infinite; }
-.neo-hint   { font-family:var(--f-mono); font-size:11px; color:var(--c-text3); opacity:.7; letter-spacing:.03em; }
+.neo-hint   { font-family:var(--f-mono); font-size:11px; color:var(--c-text3); letter-spacing:.03em;
+              animation: neo-hint-in 1.2s ease 0.6s both; }
 .neo-hint .neo-mobile  { display:none; }
 @media (hover: none) {
   .neo-hint .neo-desktop { display:none; }
@@ -543,8 +582,8 @@ body.drawer-open #drawer { width: var(--sb-w); }
 }
 .modal {
   background: var(--c-surface); border: 1px solid var(--c-border-hi);
-  border-radius: 14px; padding: 22px; width: 100%; max-width: 340px;
-  box-shadow: 0 24px 64px rgba(0,0,0,0.6);
+  border-radius: 12px; padding: 22px; width: 100%; max-width: 340px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
 }
 .modal-title  { font-size: 14px; font-weight: 700; margin-bottom: 16px; font-family: var(--f-mono); }
 .modal-label  { font-size: 10px; color: var(--c-text3); margin-bottom: 7px; font-family: var(--f-mono); text-transform: uppercase; letter-spacing: 0.08em; }
@@ -593,12 +632,13 @@ html[data-theme="dark"] {
   --c-accent-dim: rgba(0,255,65,0.08);
   --c-accent2:    #ffb347;
   --c-text:       #c8ffc8;
-  --c-text2:      #4a7a4a;
-  --c-text3:      #2a5a2a;
+  --c-text2:      #6aaa6a;
+  --c-text3:      #3d7a3d;
   --c-danger:     #ff3333;
   --c-code:       #00ff41;
 }
 html[data-theme="dark"] .modal-overlay { background: rgba(0,0,0,0.88); }
+html[data-theme="dark"] .modal { box-shadow: 0 24px 64px rgba(0,0,0,0.85); }
 html[data-theme="dark"] #btn-split { border-color: rgba(0,255,65,0.4); }
 html[data-theme="dark"] .empty-terminal,
 html[data-theme="dark"] .privacy-terminal { text-shadow: 0 0 14px rgba(0,255,65,0.55); }
@@ -702,18 +742,30 @@ html[data-theme="dark"] .ql-editor mark { background: rgba(255,200,0,0.18); }
         <span>Markdown</span>
       </button>
 
-      <select id="font-picker" title="Editor font" onchange="setFont(this.value)">
-        <option value="'JetBrains Mono', monospace" selected>JetBrains Mono</option>
-        <option value="'Inter', sans-serif">Inter</option>
-        <option value="'Merriweather', serif">Merriweather</option>
-      </select>
-      <select id="size-picker" title="Font size" onchange="setFontSize(this.value)">
-        <option value="13px">13</option>
-        <option value="15px">15</option>
-        <option value="16px" selected>16</option>
-        <option value="18px">18</option>
-        <option value="20px">20</option>
-      </select>
+      <div class="nav-picker-wrap" id="font-picker-wrap">
+        <button class="nav-picker" id="font-picker-btn" onclick="toggleNavPicker('font')" title="Editor font">
+          <span id="font-picker-label">JetBrains Mono</span>
+          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="nav-picker-dropdown" id="font-picker-dropdown">
+          <button class="nav-picker-option selected" data-font="'JetBrains Mono', monospace" onclick="selectFont(this)">JetBrains Mono</button>
+          <button class="nav-picker-option" data-font="'Inter', sans-serif" onclick="selectFont(this)">Inter</button>
+          <button class="nav-picker-option" data-font="'Merriweather', serif" onclick="selectFont(this)">Merriweather</button>
+        </div>
+      </div>
+      <div class="nav-picker-wrap" id="size-picker-wrap">
+        <button class="nav-picker" id="size-picker-btn" onclick="toggleNavPicker('size')" title="Font size">
+          <span id="size-picker-label">16</span>
+          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="nav-picker-dropdown" id="size-picker-dropdown">
+          <button class="nav-picker-option" data-size="13px" onclick="selectSize(this)">13</button>
+          <button class="nav-picker-option" data-size="15px" onclick="selectSize(this)">15</button>
+          <button class="nav-picker-option selected" data-size="16px" onclick="selectSize(this)">16</button>
+          <button class="nav-picker-option" data-size="18px" onclick="selectSize(this)">18</button>
+          <button class="nav-picker-option" data-size="20px" onclick="selectSize(this)">20</button>
+        </div>
+      </div>
 
       <button class="nav-btn" id="btn-sync" onclick="initSync()" title="Link local folder for auto-save" style="display:none">
         <svg id="sync-icon" viewBox="0 0 24 24">
@@ -844,10 +896,9 @@ html[data-theme="dark"] .ql-editor mark { background: rgba(255,200,0,0.18); }
               <span>Wake up, Neo.</span><span class="neo-blink">█</span>
             </div>
             <div class="neo-hint">
-              <span class="neo-desktop">↵ press Enter &nbsp;·&nbsp; or scroll ↓</span>
-              <span class="neo-mobile">tap or swipe down</span>
+              <span class="neo-desktop">click to create a new file &nbsp;·&nbsp; or open the drawer</span>
+              <span class="neo-mobile">tap to create a new file</span>
             </div>
-            <div class="neo-arrow">↓</div>
           </div>
         </div>
       </div>
@@ -860,6 +911,7 @@ html[data-theme="dark"] .ql-editor mark { background: rgba(255,200,0,0.18); }
         <div id="md-tabbar"></div>
         <div class="md-pane-header">
           <span class="md-pane-label">Markdown Source</span>
+          <span id="md-word-count" class="md-word-count">—</span>
           <button class="btn sm ghost" onclick="copyMarkdown()">Copy</button>
         </div>
         <textarea id="md-textarea" spellcheck="false" placeholder="# markdown appears here…"></textarea>
@@ -882,7 +934,7 @@ html[data-theme="dark"] .ql-editor mark { background: rgba(255,200,0,0.18); }
 // ═══════════════════════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════════════════════
-const APP_VERSION = 'V5.7';
+const APP_VERSION = 'V5.8';
 // Markdown files in the repo root to load automatically on startup.
 // Adjust this list to match the .md files alongside index.html.
 const PRELOAD_FILES = [];   // no files auto-loaded on startup — terminal welcome shown instead
@@ -1279,6 +1331,14 @@ function syncMdPane() {
   const html = quill ? quill.root.innerHTML : (getFile(S.activeTab)?.htmlContent || '');
   const md   = html && html !== '<p><br></p>' ? TD.turndown(html) : '';
   if (ta.value !== md) ta.value = md;   // only write if changed (avoids cursor jump)
+  updateWordCount();
+}
+function updateWordCount() {
+  const el = document.getElementById('md-word-count');
+  if (!el) return;
+  const text = quill ? quill.root.innerText.replace(/\n+/g, ' ').trim() : '';
+  const words = text ? text.split(/\s+/).filter(Boolean).length : 0;
+  el.textContent = words === 0 ? '—' : `${words} w`;
 }
 
 function scheduleMdSync() {
@@ -1319,6 +1379,30 @@ function copyMarkdown() {
 // ═══════════════════════════════════════════════════════════
 function setFont(value) {
   document.documentElement.style.setProperty('--f-editor', value);
+}
+function toggleNavPicker(which) {
+  const other = which === 'font' ? 'size' : 'font';
+  document.getElementById(other + '-picker-dropdown').classList.remove('open');
+  document.getElementById(other + '-picker-btn').classList.remove('open');
+  const dd  = document.getElementById(which + '-picker-dropdown');
+  const btn = document.getElementById(which + '-picker-btn');
+  const opening = !dd.classList.contains('open');
+  dd.classList.toggle('open', opening);
+  btn.classList.toggle('open', opening);
+}
+function selectFont(el) {
+  setFont(el.dataset.font);
+  document.getElementById('font-picker-label').textContent = el.textContent.trim();
+  document.querySelectorAll('#font-picker-dropdown .nav-picker-option').forEach(o => o.classList.remove('selected'));
+  el.classList.add('selected');
+  toggleNavPicker('font');
+}
+function selectSize(el) {
+  setFontSize(el.dataset.size);
+  document.getElementById('size-picker-label').textContent = el.textContent.trim();
+  document.querySelectorAll('#size-picker-dropdown .nav-picker-option').forEach(o => o.classList.remove('selected'));
+  el.classList.add('selected');
+  toggleNavPicker('size');
 }
 
 function toggleSplit() {
@@ -1704,9 +1788,13 @@ function closeFooterPopup() {
     document.getElementById('btn-' + id)?.classList.remove('open');
   });
 }
-// Close footer popups and mobile drawer when clicking outside
+// Close footer popups and nav pickers when clicking outside
 document.addEventListener('click', e => {
   if (!e.target.closest('.footer-action-wrap')) closeFooterPopup();
+  if (!e.target.closest('.nav-picker-wrap')) {
+    document.querySelectorAll('.nav-picker-dropdown').forEach(d => d.classList.remove('open'));
+    document.querySelectorAll('.nav-picker').forEach(b => b.classList.remove('open'));
+  }
 });
 document.getElementById('mobile-backdrop').addEventListener('click', closeDrawer);
 
@@ -2056,6 +2144,7 @@ function switchTab(fileId) {
   const _st = getFile(fileId); resolveHtml(_st);
   initQuill(_st?.htmlContent || '');
   renderTabs(); renderTree(); updateNav();
+  if (S.splitOpen) updateWordCount();
 }
 
 function closeTab(fileId) {
