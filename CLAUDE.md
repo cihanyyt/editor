@@ -10,6 +10,7 @@ A single-file, mobile-first documentation editor. The **entire application lives
 | Turndown | 7.1.2 | HTML → Markdown conversion |
 | Marked | 9.1.6 | Markdown → HTML conversion |
 | JSZip | 3.10.1 | Workspace zip export/import |
+| DOMPurify | 3.4.16 | HTML sanitization (XSS) |
 
 ## Architecture
 
@@ -38,7 +39,14 @@ Nothing is persisted to localStorage — workspace lives in memory and is export
 
 **Always call `flushContent()` before switching tabs or files.** It writes `quill.root.innerHTML` back to `file.htmlContent`. Forgetting this loses unsaved edits.
 
-**Sync loop prevention.** Quill's `text-change` event fires for both user input and programmatic DOM changes. The guard `source === 'user'` on the handler ensures only real keystrokes trigger a markdown sync. Setting `quill.root.innerHTML` directly from the md→quill direction is seen as `source = 'api'` and is safely ignored.
+**Sync loop prevention.** Quill's `text-change` event fires for both user input and programmatic changes. The guard `source === 'user'` on the handler ensures only real keystrokes trigger a markdown sync. The md→quill direction uses `quill.setContents(quill.clipboard.convert(html), 'silent')`, which emits no `text-change` at all.
+
+**HTML sanitization (security-critical).** Markdown files are untrusted input (imports, zip, synced folder, pasted text) and `marked` passes raw HTML through by design. Rules:
+- All markdown → HTML goes through `mdToHtml()` → `sanitizeHtml()`, which uses DOMPurify with the `PURIFY_CFG` allowlist (only tags Quill/our blots render; attrs `href/src/alt/title`). Never go back to a regex/blocklist sanitizer — it was bypassed by `srcdoc`, whitespace-prefixed `javascript:`, etc.
+- **Never assign `quill.root.innerHTML`.** Load content with `dangerouslyPasteHTML` / `setContents(clipboard.convert(...))` so it is reduced to registered formats. `initQuill()` also runs `DOMPurify.sanitize(html)` (default config, keeps `ql-*` classes) first, because Quill 1.3.7's converter parses HTML in a live DOM node where `onerror` handlers would fire.
+- `TableBlot` stores raw inner HTML outside Quill's format model, so `TableBlot.create` re-sanitizes with `PURIFY_CFG` and moves the resulting DOM nodes in (no `innerHTML` re-serialisation). Any new BlockEmbed that stores HTML must do the same.
+- `TD.escape` is overridden to backslash-escape tag-like `<`, so text that *displays* HTML never becomes markup after a Turndown → marked round trip.
+- Zip export/import strips `.`/`..` and path separators from segments (`safeSeg`, import filter); imports are size-capped (`MAX_MD_BYTES`, `MAX_ZIP_BYTES`).
 
 **Two separate debounce timers:**
 - `mdSyncTimer` — quill → markdown pane (150ms debounce, reads `quill.root.innerHTML` directly)
@@ -96,9 +104,22 @@ Nothing is persisted to localStorage — workspace lives in memory and is export
 ```
 editorapp/
 ├── index.html      ← entire application
+├── tests/
+│   ├── suite.js      ← regression + XSS tests (injected into a copy of index.html)
+│   └── run-tests.sh  ← runs the suite in headless Chrome/Edge
 ├── CLAUDE.md       ← this file
 └── README.md       ← GitHub / deployment docs
 ```
+
+## Testing
+
+Run `bash tests/run-tests.sh` before pushing (needs internet for the CDN libs; no npm). It copies `index.html` to `.test-build.html` with `tests/suite.js` injected after the app script, runs headless Chrome with `--dump-dom`, and prints PASS/FAIL per test. Exit: `0` pass, `1` failures, `2` environment problem (no browser, CDN unreachable). `bash tests/run-tests.sh some-other.html` tests another copy, e.g. `git show HEAD:index.html > old.html` to compare.
+
+- Tests are white-box: they call app globals (`openFile`, `mdToHtml`, `S`, `quill`, …). Renaming those means updating the suite.
+- Exploit payloads call `top.__pwned.push(id)`; a security test fails if its id appears.
+- Mark a known bug with `{ known: 'reason' }` → reported as `XFAIL`, doesn't fail the run; if it starts passing it shows `XPASS` — remove the flag.
+- The suite runs from `file://`, where Quill rewrites relative/protocol-less links to `about:blank`, so only absolute and `mailto:` links are asserted.
+- Any new code path that puts HTML into the editor needs a matching XSS test.
 
 ## Keyboard shortcuts
 
@@ -115,7 +136,7 @@ editorapp/
 
 **GitHub Pages** — push `index.html` to any public repo, enable Pages from Settings → Pages → branch `main`, root `/`. Live in ~60 seconds at `https://<username>.github.io/<repo>`.
 
-No build step. No CI needed. `git push` = deploy.
+No build step. `git push` to `main` = deploy. GitHub Actions (`.github/workflows/tests.yml`) runs `tests/run-tests.sh` on every push to any branch and writes the PASS/FAIL list to the run summary; it does not gate the Pages deploy, so work on a branch and merge only after the check is green.
 
 ## Fonts
 
