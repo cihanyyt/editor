@@ -1,0 +1,39 @@
+name: Tests
+
+# Runs on every push to any branch. Pull requests show the result of the push run
+# for their head commit, so there's no separate pull_request trigger (avoids duplicate runs).
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Run regression + XSS suite
+        run: |
+          set +e
+          bash tests/run-tests.sh > results.txt 2>&1
+          code=$?
+          cat results.txt
+          case $code in
+            0) title='✅ All tests passed' ;;
+            1) title='❌ Tests failed' ;;
+            *) title='⚠️ Test environment problem (browser or CDN)' ;;
+          esac
+          {
+            echo "## $title"
+            echo
+            grep '^RESULT' results.txt || true
+            echo
+            echo '```'
+            cat results.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit $code

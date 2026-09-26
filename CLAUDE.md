@@ -136,7 +136,7 @@ Run `bash tests/run-tests.sh` before pushing (needs internet for the CDN libs; n
 
 **GitHub Pages** — push `index.html` to any public repo, enable Pages from Settings → Pages → branch `main`, root `/`. Live in ~60 seconds at `https://<username>.github.io/<repo>`.
 
-No build step. No CI needed. `git push` = deploy.
+No build step. `git push` to `main` = deploy. GitHub Actions (`.github/workflows/tests.yml`) runs `tests/run-tests.sh` on every push to any branch and writes the PASS/FAIL list to the run summary; it does not gate the Pages deploy, so work on a branch and merge only after the check is green.
 
 ## Fonts
 

@@ -34,11 +34,13 @@ trap 'rm -rf "$BUILD" "$PROFILE"' EXIT
 # Inject the suite after the app's own <script>, so all app globals are available
 sed 's#</body>#<script src="tests/suite.js"></script>\n</body>#' "$APP" > "$BUILD"
 
-OUT=$("$BROWSER" --headless=new --disable-gpu --no-first-run \
+ROOT=$(winpath "$PWD")   # C:/… on Windows, /home/… on Linux/macOS
+# CI runners (Ubuntu) can't use Chrome's user-namespace sandbox; only disable it there
+OUT=$("$BROWSER" --headless=new --disable-gpu --no-first-run ${CI:+--no-sandbox} \
   --user-data-dir="$(winpath "$PROFILE")" \
   --allow-file-access-from-files \
   --virtual-time-budget=60000 \
-  --dump-dom "file:///$(winpath "$PWD")/$BUILD" 2>/dev/null)
+  --dump-dom "file:///${ROOT#/}/$BUILD" 2>/dev/null)
 
 MARKER='<pre id="TEST-RESULTS">'
 case "$OUT" in *"$MARKER"*) ;; *) echo "No test results in page output (page failed to load or suite crashed)." >&2; exit 2 ;; esac

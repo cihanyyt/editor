@@ -87,7 +87,11 @@ All dependencies are loaded from CDN — no `npm install` required.
 3. Go to **Settings → Pages**, set source to branch `main`, root `/`.
 4. Your editor is live at `https://<username>.github.io/<repo>` within a minute.
 
-No CI, no build pipeline. `git push` = deploy.
+No build pipeline. `git push` = deploy.
+
+## Tests
+
+`bash tests/run-tests.sh` runs the regression and XSS suite in headless Chrome/Edge (no npm; needs internet for the CDN libraries). GitHub Actions runs the same suite on every push — results appear on each commit's check and in the run summary.
 
 ---
 
