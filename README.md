@@ -76,6 +76,7 @@ All dependencies are loaded from CDN — no `npm install` required.
 | [Turndown](https://github.com/mixmark-io/turndown) | 7.1.2 | HTML → Markdown |
 | [Marked](https://marked.js.org) | 9.1.6 | Markdown → HTML |
 | [JSZip](https://stuk.github.io/jszip) | 3.10.1 | Workspace zip export/import |
+| [DOMPurify](https://github.com/cure53/DOMPurify) | 3.4.16 | HTML sanitization of imported Markdown |
 
 ---
 

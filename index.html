@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="referrer" content="no-referrer">
 <title>editorapp V5.8</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -13,6 +14,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js" integrity="sha512-pmjEJQ7CveksANaAKdCJZMig7eAcCFFzE1b5XnlnxdB/vU3AOStJ5SF7w4tFuqskuU31ETnAaWTYRQOYg2WHKw==" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/turndown/7.1.2/turndown.min.js" integrity="sha512-7V0hFVI06CJbkXSOgZtdqg40iSPxK+a9nEehUcp299C0elYdeNG+w7ceJ1Ko6WPrLjERkC5pnriiylQWM9Vnpg==" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" integrity="sha512-XMVd28F1oH/O71fzwBnV7HucLxVwtxf26XV8P4wPk26EDxuGZ91N8bsOttmnomcCD3CS5ZMRL50H0GgOHvegtg==" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.4.16/purify.min.js" integrity="sha512-flQmhkXNRQ3iUfvtdCobtpMjCb6kE+zLnTiAulAQJ3WykVfy84JvCMOo6vhwWXHTXjR25h9Zj+LyGFRWKjRoag==" crossorigin="anonymous"></script>
 
 <style>
 /* ─── RESET & TOKENS ─────────────────────────────────────── */
@@ -953,12 +955,30 @@ HorizontalRuleBlot.blotName = 'hr';
 HorizontalRuleBlot.tagName  = 'hr';
 Quill.register(HorizontalRuleBlot);
 
+// Allowlist for all HTML entering the editor: only what Quill + our blots can render.
+// DOMPurify's default URI check (applied to href/src) strips javascript:, vbscript:,
+// and whitespace/control-char obfuscated variants while keeping relative and
+// protocol-less links like "www.example.com".
+const PURIFY_CFG = {
+  ALLOWED_TAGS: ['p','br','h1','h2','h3','h4','h5','h6','strong','b','em','i','u','s','del',
+                 'a','blockquote','pre','code','ul','ol','li','hr','img','mark',
+                 'table','thead','tbody','tr','th','td'],
+  ALLOWED_ATTR: ['href','src','alt','title'],
+};
+
 // Register a Blot for <table> so Quill preserves tables instead of stripping them.
 // create/value store the innerHTML so content survives the clipboard converter.
+// The stored HTML bypasses Quill's format model, so it is re-sanitized on every create.
 class TableBlot extends BlockEmbed {
   static create(value) {
     const node = super.create();
-    if (typeof value === 'string') node.innerHTML = value;
+    if (typeof value === 'string') {
+      // Wrap in <table> so the parser keeps tbody/tr/td, then move the clean nodes in
+      // directly (no re-serialisation → no mutation-XSS round trip).
+      const frag  = DOMPurify.sanitize('<table>' + value + '</table>', { ...PURIFY_CFG, RETURN_DOM_FRAGMENT: true });
+      const clean = frag.querySelector('table');
+      if (clean) node.append(...clean.childNodes);
+    }
     return node;
   }
   static value(node) { return node.innerHTML; }
@@ -999,6 +1019,12 @@ marked.use({
   }],
 });
 
+// Turndown does not escape "<", so visible text like "<iframe …>" would come out as raw
+// HTML and become live markup on the next markdown → quill sync. Backslash-escape any "<"
+// that could open a tag; plain comparisons like "x < 5" are left readable.
+const _tdEscape = TD.escape.bind(TD);
+TD.escape = s => _tdEscape(s).replace(/<(?=[a-zA-Z\/!?])/g, '\\<');
+
 // Turndown rule: <mark> → ==text==
 TD.addRule('highlight', {
   filter: 'mark',
@@ -1028,6 +1054,15 @@ const getFile   = id => S.files.find(f => f.id === id);
 const getFolder = id => S.folders.find(f => f.id === id);
 const esc       = s  => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const mdExt     = n  => n.endsWith('.md') ? n : n + '.md';
+// One zip path segment: no separators, never "." or ".." (prevents zip-slip on extraction)
+const safeSeg   = n  => n.replace(/[\/\\]/g, '_').replace(/^\.{1,2}$/, '_');
+const MAX_MD_BYTES  = 10 * 1024 * 1024;   // per-file import cap
+const MAX_ZIP_BYTES = 50 * 1024 * 1024;   // workspace import cap
+function tooLarge(f, max) {
+  if (f.size <= max) return false;
+  alert(`${f.name} is too large to import (limit ${max / 1024 / 1024} MB).`);
+  return true;
+}
 
 function folderPath(folderId) {
   if (!folderId) return '';
@@ -1046,18 +1081,10 @@ function htmlToMd(html) {
   if (!html || html === '<p><br></p>') return '';
   return TD.turndown(html);
 }
-// Strip event-handler attributes, <script> elements, and javascript:/data: URLs
-// from HTML produced by marked before it is injected into the DOM.
+// Reduce HTML produced by marked to the PURIFY_CFG allowlist before it reaches the DOM.
+// marked passes raw HTML through by design — this is the only barrier against XSS.
 function sanitizeHtml(html) {
-  const doc = new DOMParser().parseFromString(html, 'text/html');
-  doc.querySelectorAll('script').forEach(el => el.remove());
-  doc.querySelectorAll('*').forEach(el => {
-    Array.from(el.attributes).forEach(attr => {
-      if (/^on/i.test(attr.name)) el.removeAttribute(attr.name);
-      if (/^(href|src|action|formaction)$/i.test(attr.name) &&
-          /^(javascript|data):/i.test(attr.value)) el.removeAttribute(attr.name);
-    });
-  });
+  const doc = new DOMParser().parseFromString(DOMPurify.sanitize(html, PURIFY_CFG), 'text/html');
   // Quill's BlockquoteBlot is a line blot and cannot have block-level children.
   // marked.parse() wraps blockquote content in <p> tags, which Quill silently
   // drops along with their text. Unwrap them so the text survives.
@@ -1271,7 +1298,10 @@ function initQuill(html) {
   // directly assigning innerHTML. This correctly handles blockquotes, links inside
   // blockquotes, and all registered inline/block formats — avoiding the silent
   // content loss that Quill's MutationObserver normalization caused with innerHTML.
-  if (html) quill.clipboard.dangerouslyPasteHTML(html);
+  // Quill 1.3.7's converter parses HTML inside a live DOM node, so handlers like
+  // <img onerror> would fire there. Default DOMPurify config keeps Quill's classes
+  // (ql-indent-*, ql-syntax) while stripping all active content.
+  if (html) quill.clipboard.dangerouslyPasteHTML(DOMPurify.sanitize(html));
 
   // Inject HR + Mark buttons into the Quill toolbar
   const toolbar = document.querySelector('.ql-toolbar');
@@ -1382,9 +1412,9 @@ document.getElementById('md-textarea').addEventListener('input', () => {
     file.htmlContent    = html;
     file.lastModified   = Date.now();
     file._headingsCache = undefined;
-    // Setting innerHTML directly is seen as source='api' by Quill,
-    // so our text-change guard (source !== 'user') will ignore it — no loop.
-    quill.root.innerHTML = html;
+    // Go through Quill's clipboard converter (never quill.root.innerHTML) so content is
+    // reduced to registered formats. 'silent' emits no text-change — no sync loop.
+    quill.setContents(quill.clipboard.convert(html), 'silent');
   }, 600);
 });
 
@@ -1571,7 +1601,9 @@ async function _importNewFilesFromFolder() {
       if (entry.kind !== 'file' || !name.endsWith('.md')) continue;
       const alreadyExists = S.files.some(f => (f.name.endsWith('.md') ? f.name : f.name + '.md') === name);
       if (alreadyExists) continue;
-      const md = await (await entry.getFile()).text();
+      const fileObj = await entry.getFile();
+      if (fileObj.size > MAX_MD_BYTES) continue;
+      const md = await fileObj.text();
       S.files.push({ id: uid(), name, folderId: null, htmlContent: '', _srcMd: md, lastModified: Date.now() });
       didImport = true;
     }
@@ -1597,7 +1629,9 @@ async function connectSync(handle) {
   try {
     for await (const [name, entry] of handle.entries()) {
       if (entry.kind !== 'file' || !name.endsWith('.md')) continue;
-      const md = await (await entry.getFile()).text();
+      const fileObj = await entry.getFile();
+      if (fileObj.size > MAX_MD_BYTES) continue;
+      const md = await fileObj.text();
       const existing = S.files.find(f => f.name === name);
       if (existing) {
         existing._srcMd       = md;
@@ -1618,7 +1652,7 @@ async function connectSync(handle) {
     const activeImported = imported.find(f => f.id === S.activeTab);
     if (activeImported && quill) {
       resolveHtml(activeImported);
-      quill.root.innerHTML = activeImported.htmlContent;
+      quill.setContents(quill.clipboard.convert(activeImported.htmlContent), 'silent');
     }
     renderTree();
     openFile(imported[0].id);   // resolveHtml called inside openFile
@@ -2326,7 +2360,8 @@ function importSingleFile() { document.getElementById('md-file-input').click(); 
 
 function handleImportMd(e) {
   const f = e.target.files[0];
-  if (!f) return;
+  e.target.value = '';
+  if (!f || tooLarge(f, MAX_MD_BYTES)) return;
   const r = new FileReader();
   r.onload = ev => {
     const file = { id: uid(), name: f.name, folderId: null, htmlContent: mdToHtml(ev.target.result), lastModified: Date.now() };
@@ -2334,15 +2369,15 @@ function handleImportMd(e) {
     renderTree(); openFile(file.id);
   };
   r.readAsText(f);
-  e.target.value = '';
 }
 
 function exportWorkspace() {
   flushContent();
   const zip = new JSZip();
   S.files.forEach(file => {
-    const fp   = folderPath(file.folderId);
-    const path = fp ? fp.replace(/ \/ /g, '/') + '/' + file.name : file.name;
+    const parts = [];
+    for (let id = file.folderId, f; id && (f = getFolder(id)); id = f.parentId) parts.unshift(safeSeg(f.name));
+    const path = [...parts, safeSeg(file.name)].join('/');
     zip.file(path, file._srcMd !== undefined ? file._srcMd : htmlToMd(file.htmlContent || ''));
   });
   zip.generateAsync({ type: 'blob' }).then(blob => dl('editorapp-workspace.zip', blob));
@@ -2352,13 +2387,16 @@ function importWorkspace() { document.getElementById('workspace-file-input').cli
 
 function handleImportWorkspace(e) {
   const f = e.target.files[0];
-  if (!f) return;
+  e.target.value = '';
+  if (!f || tooLarge(f, MAX_ZIP_BYTES)) return;
   JSZip.loadAsync(f).then(zip => {
     S.folders = []; S.files = []; S.openTabs = []; S.activeTab = null; quill = null;
     const folderMap = {}, promises = [];
     zip.forEach((path, entry) => {
       if (entry.dir || !path.endsWith('.md')) return;
-      const parts  = path.split('/');
+      // Drop empty, "." and ".." segments so a crafted zip can't create traversal folders
+      const parts  = path.split(/[\/\\]/).filter(p => p && p !== '.' && p !== '..');
+      if (!parts.length) return;
       const fname  = parts.pop();
       let parentId = null;
       parts.forEach((part, i) => {
@@ -2378,7 +2416,6 @@ function handleImportWorkspace(e) {
       showEmptyState(); renderTree(); renderTabs(); updateNav();
     });
   }).catch(err => alert('Import failed: ' + err.message));
-  e.target.value = '';
 }
 
 function dl(filename, blob) {
@@ -2526,7 +2563,7 @@ document.addEventListener('dragover', e => e.preventDefault());
 document.addEventListener('drop', e => {
   e.preventDefault();
   Array.from(e.dataTransfer.files).forEach(f => {
-    if (f.name.endsWith('.md')) {
+    if (f.name.endsWith('.md') && !tooLarge(f, MAX_MD_BYTES)) {
       const r = new FileReader();
       r.onload = ev => {
         const file = { id: uid(), name: f.name, folderId: null, htmlContent: mdToHtml(ev.target.result), lastModified: Date.now() };
